@@ -50,7 +50,7 @@ export const VisualizacaoScreen: React.FC<VisualizacaoScreenProps> = ({
       activeTemplateId: 'boas-vindas',
       customCodeHtml: tmpl?.customCodeHtml,
     }));
-    onNavigate('gerador', 'push');
+    onNavigate('gerador_pro', 'push');
   };
 
   const handleSelectTemplate = (id: string, name: string, title: string, color: string) => {
@@ -136,67 +136,15 @@ export const VisualizacaoScreen: React.FC<VisualizacaoScreenProps> = ({
       {/* Preview Container */}
       <div className="flex-1 overflow-auto p-4 md:p-8 flex justify-center items-start custom-scroll my-4">
         <div
-          className={`transition-device w-full bg-white rounded-xl shadow-xs border overflow-hidden min-h-[580px] flex flex-col ${
+          className={`transition-device w-full bg-white rounded-xl shadow-xs border overflow-hidden min-h-[620px] flex flex-col ${
             device === 'mobile' ? 'max-w-[375px]' : 'max-w-[700px]'
           } ${readingMode ? 'border-slate-700 shadow-2xl' : 'border-slate-200'}`}
         >
-          {emailData.customCodeHtml ? (
-            <div dangerouslySetInnerHTML={{ __html: emailData.customCodeHtml }} />
-          ) : (
-            <>
-              {/* Email Header Banner */}
-              <div
-                className="px-6 py-12 text-center transition-colors duration-300"
-                style={{ backgroundColor: emailData.primaryColor || '#2563eb' }}
-              >
-                <h2 className="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
-                  {emailData.headerTitle}
-                </h2>
-              </div>
-
-              {/* Email Content Body */}
-              <div className="p-6 md:p-10 flex flex-col items-center text-center">
-                <div className="w-full max-w-lg">
-                  <p className="text-lg font-bold text-slate-800 mb-4">
-                    {emailData.greeting}
-                  </p>
-                  <div className="text-sm text-slate-600 mb-8 whitespace-pre-line leading-relaxed">
-                    {emailData.bodyText}
-                  </div>
-
-                  <a
-                    href={emailData.buttonUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block text-white font-semibold text-sm px-8 py-3 rounded-md shadow-xs hover:opacity-90 transition-all mb-8 no-underline"
-                    style={{ backgroundColor: emailData.primaryColor || '#2563eb' }}
-                  >
-                    {emailData.buttonText}
-                  </a>
-
-                  <div className="w-full border-t border-slate-100 pt-6">
-                    <p className="text-xs text-slate-400 italic">
-                      Você está recebendo este e-mail pois está cadastrado em nossa base de usuários.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Email Footer */}
-              <div className="mt-auto bg-slate-50 p-6 flex flex-col items-center border-t border-slate-200">
-                <div className="flex gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-slate-200/80 flex items-center justify-center text-slate-600 cursor-pointer hover:bg-blue-600 hover:text-white transition-colors">
-                    <span className="material-symbols-outlined text-[18px]">share</span>
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-slate-200/80 flex items-center justify-center text-slate-600 cursor-pointer hover:bg-blue-600 hover:text-white transition-colors">
-                    <span className="material-symbols-outlined text-[18px]">language</span>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-500 font-semibold">Estácio de Sá — Educação Digital</p>
-                <p className="text-xs text-slate-400">Rua Bispo, 83 - Rio de Janeiro, RJ</p>
-              </div>
-            </>
-          )}
+          <iframe
+            title="Visualização Fiel do E-mail"
+            srcDoc={emailData.customCodeHtml || generateEmailHtml(emailData)}
+            className="w-full h-[620px] min-h-[580px] border-0 bg-white"
+          />
         </div>
       </div>
 

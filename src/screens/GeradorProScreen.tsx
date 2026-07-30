@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { EmailData, Screen, TransitionType } from '../types';
 import { parseHtmlToBlocks } from '../utils/htmlParser';
 
@@ -398,11 +398,45 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
   setEmailData,
   onNavigate,
 }) => {
-  const [blocks, setBlocks] = useState<EmailBlock[]>(DEFAULT_BLOCKS);
-  const [selectedBlockId, setSelectedBlockId] = useState<string>('block-1');
+  const [blocks, setBlocks] = useState<EmailBlock[]>(() => {
+    if (emailData.customCodeHtml) {
+      const parsed = parseHtmlToBlocks(emailData.customCodeHtml);
+      if (parsed && parsed.length > 0) {
+        return parsed;
+      }
+    }
+    return DEFAULT_BLOCKS;
+  });
+  const [selectedBlockId, setSelectedBlockId] = useState<string>(() => blocks[0]?.id || 'block-1');
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const lastParsedHtmlRef = useRef<string | undefined>(emailData.customCodeHtml);
+
+  // Continuously sync compiled HTML from Gerador Visual blocks to global emailData.customCodeHtml
+  useEffect(() => {
+    const compiled = compileBlocksToHtml(blocks);
+    lastParsedHtmlRef.current = compiled;
+    setEmailData((prev) => {
+      if (prev.customCodeHtml === compiled) return prev;
+      return {
+        ...prev,
+        customCodeHtml: compiled,
+      };
+    });
+  }, [blocks, setEmailData]);
+
+  // Sync blocks ONLY if emailData.customCodeHtml changes externally (e.g. from template load or external file import)
+  useEffect(() => {
+    if (emailData.customCodeHtml && emailData.customCodeHtml !== lastParsedHtmlRef.current) {
+      lastParsedHtmlRef.current = emailData.customCodeHtml;
+      const parsed = parseHtmlToBlocks(emailData.customCodeHtml);
+      if (parsed && parsed.length > 0) {
+        setBlocks(parsed);
+        setSelectedBlockId(parsed[0].id);
+      }
+    }
+  }, [emailData.customCodeHtml]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

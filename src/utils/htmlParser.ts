@@ -172,16 +172,34 @@ function isButtonElement(node: Element, styles: Record<string, string>): boolean
   if (tagName === 'button') return true;
 
   if (tagName === 'a') {
-    // Check if styled like a button
-    if (classList.includes('btn') || classList.includes('button') || classList.includes('cta') || classList.includes('action')) return true;
-    if (styles['background-color'] || styles['background']) return true;
-    if (styles['display'] === 'block' || styles['display'] === 'inline-block') {
-      if (styles['padding'] || styles['border-radius'] || styles['border']) return true;
+    // Exclude social links from button classification
+    const href = (node.getAttribute('href') || '').toLowerCase();
+    if (href.includes('instagram') || href.includes('linkedin') || href.includes('facebook') || href.includes('twitter') || href.includes('youtube')) {
+      return false;
     }
+
+    // Check if class explicitly suggests a button
+    if (classList.includes('btn') || classList.includes('button') || classList.includes('cta') || classList.includes('action')) return true;
+
+    // Check if the anchor itself has an explicit background color (not transparent/none)
+    const bgColor = styles['background-color'] || styles['background'];
+    if (bgColor && bgColor !== 'transparent' && bgColor !== 'inherit' && bgColor !== 'none') {
+      return true;
+    }
+
+    // Check if anchor has padding/border-radius with block or inline-block display
+    if (styles['padding'] || styles['border-radius'] || styles['border']) {
+      if (styles['display'] === 'block' || styles['display'] === 'inline-block') {
+        return true;
+      }
+    }
+
     const parent = node.parentElement;
     if (parent) {
-      const parentStyles = parseStylesAndAttrs(parent);
-      if (parentStyles['background-color'] || parent.classList.contains('btn-container')) return true;
+      const parentClass = parent.className || '';
+      if (parentClass.includes('btn') || parentClass.includes('button') || parentClass.includes('cta')) {
+        return true;
+      }
     }
   }
 
