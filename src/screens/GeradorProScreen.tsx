@@ -426,9 +426,9 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
         if (parsedBlocks.length > 0) {
           setBlocks(parsedBlocks);
           setSelectedBlockId(parsedBlocks[0].id);
-          showToast(`Arquivo HTML "${file.name}" importado e convertido em ${parsedBlocks.length} blocos editáveis no Gerador PRO!`);
+          showToast(`Arquivo HTML "${file.name}" importado e convertido em ${parsedBlocks.length} blocos editáveis no Gerador Visual!`);
         } else {
-          showToast(`Arquivo HTML "${file.name}" importado no Gerador PRO!`);
+          showToast(`Arquivo HTML "${file.name}" importado no Gerador Visual!`);
         }
       }
     };
@@ -997,7 +997,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                 extension
               </span>
               <h1 className="text-base md:text-lg font-bold tracking-wide uppercase text-slate-900 flex items-center gap-2">
-                <span>GERADOR PRO — CONSTRUTOR POR BLOCOS</span>
+                <span>GERADOR VISUAL — CONSTRUTOR POR BLOCOS</span>
                 <span className="text-[11px] bg-indigo-100 text-indigo-800 font-extrabold px-2 py-0.5 rounded-full">
                   MODULAR & FORMATADO
                 </span>

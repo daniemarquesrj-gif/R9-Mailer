@@ -8,7 +8,6 @@ import { Footer } from './components/Footer';
 
 import { EditorScreen } from './screens/EditorScreen';
 import { VisualizacaoScreen } from './screens/VisualizacaoScreen';
-import { GeradorScreen } from './screens/GeradorScreen';
 import { GeradorProScreen } from './screens/GeradorProScreen';
 
 export default function App() {
@@ -63,8 +62,6 @@ export default function App() {
         return '/ editor-de-codigo.html';
       case 'visualizacao':
         return '/ visualizacao-real.html';
-      case 'gerador':
-        return '/ gerador-visual.html';
       case 'gerador_pro':
         return '/ gerador-pro-blocos.html';
       default:
@@ -103,14 +100,6 @@ export default function App() {
 
             {currentScreen === 'visualizacao' && (
               <VisualizacaoScreen
-                emailData={emailData}
-                setEmailData={setEmailData}
-                onNavigate={handleNavigate}
-              />
-            )}
-
-            {currentScreen === 'gerador' && (
-              <GeradorScreen
                 emailData={emailData}
                 setEmailData={setEmailData}
                 onNavigate={handleNavigate}

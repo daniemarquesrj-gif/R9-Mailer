@@ -15,12 +15,12 @@ export const Header: React.FC<HeaderProps> = ({ currentScreen, onNavigate, subti
         className="flex items-center gap-3 cursor-pointer select-none"
         onClick={() => onNavigate('editor', 'none')}
       >
-        <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold shadow-xs">
-          E
+        <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-xs shadow-xs">
+          R9
         </div>
         <div className="flex items-baseline gap-2">
           <span className="text-xl font-bold text-slate-800 tracking-tight">
-            Estácio <span className="font-light text-slate-500">Mailer</span>
+            R9Bot <span className="font-light text-slate-500">Mailer</span>
           </span>
           {subtitle && (
             <span className="hidden lg:inline text-xs text-slate-400 font-medium">
@@ -44,17 +44,6 @@ export const Header: React.FC<HeaderProps> = ({ currentScreen, onNavigate, subti
         </button>
 
         <button
-          onClick={() => onNavigate('gerador', 'none')}
-          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
-            currentScreen === 'gerador'
-              ? 'bg-white text-blue-700 shadow-xs font-semibold'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-          }`}
-        >
-          Gerador Visual
-        </button>
-
-        <button
           onClick={() => onNavigate('gerador_pro', 'none')}
           className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all flex items-center gap-1 ${
             currentScreen === 'gerador_pro'
@@ -62,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({ currentScreen, onNavigate, subti
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
           }`}
         >
-          <span>Gerador PRO</span>
+          <span>Gerador Visual</span>
           <span className="text-[10px] bg-indigo-100 text-indigo-700 font-extrabold px-1 py-0.2 rounded uppercase">
             PRO
           </span>

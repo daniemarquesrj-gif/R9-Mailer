@@ -1,6 +1,6 @@
 {
-  "name": "Estácio Mailer",
-  "description": "Criador e Editor de E-mail Marketing da Estácio com Gerador Visual, Editor de Código, Visualização e Modelos Profissionais.",
+  "name": "R9Bot Mailer",
+  "description": "Criador e Editor de E-mail Marketing R9Bot com Gerador Visual, Editor de Código e Visualização.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
