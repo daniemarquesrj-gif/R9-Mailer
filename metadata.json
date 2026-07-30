@@ -1,0 +1,6 @@
+{
+  "name": "Estácio Mailer",
+  "description": "Criador e Editor de E-mail Marketing da Estácio com Gerador Visual, Editor de Código, Visualização e Modelos Profissionais.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
