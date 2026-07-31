@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { EmailData, EmailTemplate, Screen, TransitionType } from '../types';
 import { DEFAULT_TEMPLATES } from '../data/templates';
 import { generateEmailHtml } from '../utils/htmlGenerator';
+import { uploadToPublicHost } from '../utils/imageUploader';
 
 interface EditorScreenProps {
   emailData: EmailData;
@@ -19,7 +20,9 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
   );
   const [activeTab, setActiveTab] = useState<'visual' | 'html'>('html');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     // If code is modified in editor, reflect in emailData
@@ -61,6 +64,34 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
     reader.readAsText(file);
     // Reset file input value so user can upload the same file again if edited
     e.target.value = '';
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione um arquivo de imagem válido (PNG, JPG, WEBP, GIF).');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setToastMessage('🔥 Enviando imagem para o Firebase Storage...');
+
+    try {
+      const res = await uploadToPublicHost(file, file.name);
+      const imgTag = `\n<img src="${res.url}" alt="${file.name.replace(/\.[^/.]+$/, '')}" style="max-width: 100%; height: auto; display: block; margin: 16px auto; border: 0; outline: none; border-radius: 6px;" />\n`;
+      
+      setCode((prev) => prev + imgTag);
+      setToastMessage(res.message);
+    } catch (err) {
+      console.error('Erro no upload de imagem:', err);
+      alert('Não foi possível realizar o upload da imagem.');
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
+      setTimeout(() => setToastMessage(null), 4000);
+    }
   };
 
   const handleLoadModelClick = (tmpl: EmailTemplate) => {
@@ -182,6 +213,30 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
             accept=".html,.htm,text/html"
             className="hidden"
           />
+
+          {/* Hidden Image Upload Input */}
+          <input
+            type="file"
+            ref={imageInputRef}
+            onChange={handleImageUpload}
+            accept="image/*"
+            className="hidden"
+          />
+
+          <button
+            onClick={() => imageInputRef.current?.click()}
+            disabled={isUploadingImage}
+            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-3 py-1.5 rounded-md border border-indigo-300 transition-all text-xs flex items-center gap-1.5 shadow-2xs active:scale-95 disabled:opacity-50"
+            title="Anexar e hospedar imagem no Firebase Storage com URL pública"
+          >
+            <span className="material-symbols-outlined text-[17px]">
+              {isUploadingImage ? 'sync' : 'add_photo_alternate'}
+            </span>
+            <span className="hidden sm:inline">
+              {isUploadingImage ? 'Enviando...' : 'Anexar Imagem (Firebase)'}
+            </span>
+            <span className="sm:hidden">Imagem</span>
+          </button>
 
           <button
             onClick={() => fileInputRef.current?.click()}

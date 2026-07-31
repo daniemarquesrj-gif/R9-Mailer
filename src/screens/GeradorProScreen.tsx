@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { EmailData, Screen, TransitionType } from '../types';
 import { parseHtmlToBlocks } from '../utils/htmlParser';
 import { normalizeImage } from '../utils/imageNormalizer';
+import { uploadToPublicHost } from '../utils/imageUploader';
 
 export type BlockType = 
   | 'header'
@@ -491,26 +492,73 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
     }
 
     setIsNormalizing(true);
-    showToast('Normalizando e ajustando imagem para celular e computador...');
+    showToast('Otimizando e fazendo upload para Firebase Storage (/emails/)...');
     try {
+      // 1. Normalize image aspect ratio & dimensions (max 1200px)
       const normalizedDataUrl = await normalizeImage(file, 1200);
-      updateSelectedBlock({ imageUrl: normalizedDataUrl });
-      showToast(`✨ Imagem "${file.name}" normalizada e pronta para celular e PC!`);
-    } catch (err) {
-      console.error('Erro na normalização de imagem:', err);
-      // Fallback to standard reader
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        if (dataUrl) {
-          updateSelectedBlock({ imageUrl: dataUrl });
-          showToast(`Imagem "${file.name}" enviada com sucesso!`);
+
+      // 2. Upload to Firebase Storage (/emails/ folder) or public host
+      const uploadRes = await uploadToPublicHost(normalizedDataUrl, file.name);
+
+      if (uploadRes.isPublicUrl) {
+        updateSelectedBlock({ imageUrl: uploadRes.url });
+        if (uploadRes.isFirebase) {
+          showToast('🔥 Imagem enviada para Firebase Storage (/emails/)! URL inserida na tag <img src="...">.');
+        } else {
+          showToast('✨ Imagem hospedada em URL HTTPS pública! Visível em 100% dos e-mails (Gmail/Outlook).');
         }
-      };
-      reader.readAsDataURL(file);
+      } else {
+        updateSelectedBlock({ imageUrl: uploadRes.url });
+        showToast('⚠️ Salvo localmente em Base64.');
+      }
+    } catch (err) {
+      console.error('Erro no processamento da imagem:', err);
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result as string);
+          r.onerror = () => reject(new Error('Erro de leitura de arquivo'));
+          r.readAsDataURL(file);
+        });
+        const res = await uploadToPublicHost(dataUrl, file.name);
+        updateSelectedBlock({ imageUrl: res.url });
+        showToast(`Imagem "${file.name}" vinculada com sucesso!`);
+      } catch (fallbackErr) {
+        showToast('Não foi possível carregar a imagem selecionada.');
+      }
     } finally {
       setIsNormalizing(false);
       e.target.value = '';
+    }
+  };
+
+  const handleUploadExistingToPublicHost = async () => {
+    const selected = blocks.find((b) => b.id === selectedBlockId);
+    if (!selected || !selected.imageUrl) {
+      showToast('Nenhuma imagem selecionada para hospedar.');
+      return;
+    }
+
+    if (selected.imageUrl.startsWith('http://') || selected.imageUrl.startsWith('https://')) {
+      showToast('Esta imagem já possui uma URL HTTPS pública!');
+      return;
+    }
+
+    setIsNormalizing(true);
+    showToast('Enviando para o Firebase Storage (/emails/)...');
+
+    try {
+      const res = await uploadToPublicHost(selected.imageUrl, 'email_banner');
+      if (res.isPublicUrl) {
+        updateSelectedBlock({ imageUrl: res.url });
+        showToast('🔥 Imagem enviada para o Firebase Storage (/emails/)! URL pública inserida.');
+      } else {
+        showToast(res.message);
+      }
+    } catch (err) {
+      showToast('Não foi possível realizar o upload da imagem.');
+    } finally {
+      setIsNormalizing(false);
     }
   };
 
@@ -522,12 +570,17 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
     }
 
     setIsNormalizing(true);
-    showToast('Ajustando dimensões e proporções para celular e computador...');
+    showToast('Ajustando dimensões e enviando para o Firebase Storage (/emails/)...');
 
     try {
       const normalized = await normalizeImage(selected.imageUrl, 1200);
-      updateSelectedBlock({ imageUrl: normalized });
-      showToast('✨ Imagem normalizada! Agora ela se ajusta perfeitamente em telas de celular e PC.');
+      const res = await uploadToPublicHost(normalized, 'email_banner_normalized');
+      updateSelectedBlock({ imageUrl: res.url });
+      if (res.isFirebase) {
+        showToast('🔥 Imagem ajustada e enviada para o Firebase Storage (/emails/)!');
+      } else {
+        showToast('✨ Imagem ajustada e hospedada com URL pública!');
+      }
     } catch (err) {
       showToast('Não foi possível ajustar a imagem. Verifique se a URL é acessível.');
     } finally {
@@ -1560,10 +1613,22 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                       <span>Imagem / Banner do E-mail</span>
                     </label>
                     {selectedBlock.imageUrl && (
-                      <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                        {selectedBlock.imageUrl.startsWith('data:') ? 'Imagem Local Enviada (Base64)' : 'URL Externa'}
-                      </span>
+                      selectedBlock.imageUrl.includes('firebasestorage') ? (
+                        <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-300 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px] text-amber-600">local_fire_department</span>
+                          Firebase Storage (/emails/) — URL Pública vinculada ao HTML
+                        </span>
+                      ) : selectedBlock.imageUrl.startsWith('http://') || selectedBlock.imageUrl.startsWith('https://') ? (
+                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                          URL HTTPS Pública (Compatível com Gmail/Outlook)
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">warning</span>
+                          Imagem em Base64 Local (Pode ser bloqueada no Gmail)
+                        </span>
+                      )
                     )}
                   </div>
 
@@ -1578,7 +1643,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                       <span className="material-symbols-outlined text-[18px]">
                         {isNormalizing ? 'sync' : 'upload_file'}
                       </span>
-                      <span>{isNormalizing ? 'Processando Imagem...' : 'Fazer Upload de Imagem do Computador'}</span>
+                      <span>{isNormalizing ? 'Processando e Hospedando...' : 'Fazer Upload de Imagem do Computador'}</span>
                     </button>
 
                     {selectedBlock.imageUrl && (
@@ -1590,14 +1655,38 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                         title="Redimensiona e otimiza para ficar visível em qualquer celular e PC"
                       >
                         <span className="material-symbols-outlined text-[16px] text-indigo-600">tune</span>
-                        <span>Normalizar para Celular e PC</span>
+                        <span>Ajustar Dimensões Celular/PC</span>
                       </button>
                     )}
 
                     <span className="text-xs text-indigo-900/80 font-medium text-center sm:text-left">
-                      Suporta PNG, JPG, WEBP, GIF, SVG. A imagem é otimizada e incorporada diretamente no e-mail com resposta adaptativa para Celular e PC.
+                      Suporta PNG, JPG, WEBP, GIF. Ao fazer upload, geramos automaticamente um link HTTPS para que a imagem seja exibida normalmente no Gmail/Outlook!
                     </span>
                   </div>
+
+                  {/* Base64 Gmail Explanation Banner & Conversion Button */}
+                  {selectedBlock.imageUrl?.startsWith('data:') && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 space-y-2">
+                      <div className="flex items-start gap-2.5">
+                        <span className="material-symbols-outlined text-[20px] text-amber-600 shrink-0 mt-0.5">warning</span>
+                        <div className="text-xs text-amber-900 leading-relaxed">
+                          <p className="font-bold">Por que imagens em Base64 somem ao receber o e-mail?</p>
+                          <p className="mt-0.5 text-amber-800">
+                            Provedores como <strong>Gmail, Outlook e Yahoo</strong> bloqueiam imagens codificadas localmente em Base64 (<code>data:image/...</code>) por política de segurança. Para garantir que ela apareça na caixa de entrada dos leitores, hospede em um link público HTTPS!
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={isNormalizing}
+                        onClick={handleUploadExistingToPublicHost}
+                        className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">cloud_upload</span>
+                        <span>{isNormalizing ? 'Gerando URL pública...' : 'Hospedar em Link Público (Fixar para Gmail/Outlook)'}</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Image Preview Box */}
                   {selectedBlock.imageUrl && (
