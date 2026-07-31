@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { EmailData, Screen, TransitionType } from '../types';
 import { parseHtmlToBlocks } from '../utils/htmlParser';
 import { normalizeImage } from '../utils/imageNormalizer';
-import { uploadToPublicHost } from '../utils/imageUploader';
+import { uploadToPublicHost, checkImageSize } from '../utils/imageUploader';
 
 export type BlockType = 
   | 'header'
@@ -491,6 +491,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
       return;
     }
 
+    // Limite estrito de 5MB por upload
+    const sizeCheck = checkImageSize(file, 5);
+    if (!sizeCheck.valid) {
+      showToast(`⚠️ ${sizeCheck.message}`);
+      e.target.value = '';
+      return;
+    }
+
     setIsNormalizing(true);
     showToast('Otimizando e fazendo upload para Firebase Storage (/emails/)...');
     try {
@@ -511,21 +519,9 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
         updateSelectedBlock({ imageUrl: uploadRes.url });
         showToast('⚠️ Salvo localmente em Base64.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro no processamento da imagem:', err);
-      try {
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const r = new FileReader();
-          r.onload = () => resolve(r.result as string);
-          r.onerror = () => reject(new Error('Erro de leitura de arquivo'));
-          r.readAsDataURL(file);
-        });
-        const res = await uploadToPublicHost(dataUrl, file.name);
-        updateSelectedBlock({ imageUrl: res.url });
-        showToast(`Imagem "${file.name}" vinculada com sucesso!`);
-      } catch (fallbackErr) {
-        showToast('Não foi possível carregar a imagem selecionada.');
-      }
+      showToast(err?.message || 'Não foi possível carregar a imagem selecionada.');
     } finally {
       setIsNormalizing(false);
       e.target.value = '';
@@ -1660,7 +1656,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                     )}
 
                     <span className="text-xs text-indigo-900/80 font-medium text-center sm:text-left">
-                      Suporta PNG, JPG, WEBP, GIF. Ao fazer upload, geramos automaticamente um link HTTPS para que a imagem seja exibida normalmente no Gmail/Outlook!
+                      Suporta PNG, JPG, WEBP, GIF (Limite: 5MB). Geramos automaticamente um link HTTPS para exibição garantida no Gmail e Outlook!
                     </span>
                   </div>
 

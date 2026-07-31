@@ -8,13 +8,53 @@ export interface UploadResult {
   provider?: string;
 }
 
+export const MAX_IMAGE_SIZE_MB = 5;
+export const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+
+/**
+ * Validates if an image File or Base64 string is under the maximum allowed size (default 5MB).
+ */
+export function checkImageSize(fileOrBase64: File | string, maxMB = MAX_IMAGE_SIZE_MB): { valid: boolean; sizeMB: number; message?: string } {
+  const maxBytes = maxMB * 1024 * 1024;
+  let sizeInBytes = 0;
+
+  if (typeof fileOrBase64 === 'string') {
+    if (fileOrBase64.startsWith('http://') || fileOrBase64.startsWith('https://')) {
+      return { valid: true, sizeMB: 0 };
+    }
+    const cleanBase64 = fileOrBase64.replace(/^data:image\/\w+;base64,/, '');
+    const padding = (cleanBase64.match(/=/g) || []).length;
+    sizeInBytes = (cleanBase64.length * 3) / 4 - padding;
+  } else {
+    sizeInBytes = fileOrBase64.size;
+  }
+
+  const sizeMB = sizeInBytes / (1024 * 1024);
+  if (sizeInBytes > maxBytes) {
+    return {
+      valid: false,
+      sizeMB,
+      message: `A imagem possui ${sizeMB.toFixed(2)} MB, excedendo o limite máximo de ${maxMB} MB por upload.`
+    };
+  }
+
+  return { valid: true, sizeMB };
+}
+
 /**
  * Multi-provider public image upload pipeline for HTML Email compatibility.
  * Email readers (Gmail, Outlook, Yahoo) strip or hide Base64 images (data:image/...).
  * This function primary uses Firebase Storage (/emails/) and falls back to 
  * public HTTPS image hosts so images render reliably in 100% of email clients.
+ * Enforces a strict 5MB maximum file size limit.
  */
 export async function uploadToPublicHost(fileOrBase64: File | string, filename?: string): Promise<UploadResult> {
+  // Check image size before processing
+  const sizeValidation = checkImageSize(fileOrBase64, MAX_IMAGE_SIZE_MB);
+  if (!sizeValidation.valid) {
+    throw new Error(sizeValidation.message);
+  }
+
   // If already a public HTTPS or HTTP URL, return immediately
   if (typeof fileOrBase64 === 'string' && (fileOrBase64.startsWith('http://') || fileOrBase64.startsWith('https://'))) {
     const isFirebase = fileOrBase64.includes('firebasestorage') || fileOrBase64.includes('googleapis.com');

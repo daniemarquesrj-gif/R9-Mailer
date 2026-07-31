@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { EmailData, EmailTemplate, Screen, TransitionType } from '../types';
 import { DEFAULT_TEMPLATES } from '../data/templates';
 import { generateEmailHtml } from '../utils/htmlGenerator';
-import { uploadToPublicHost } from '../utils/imageUploader';
+import { uploadToPublicHost, checkImageSize } from '../utils/imageUploader';
 
 interface EditorScreenProps {
   emailData: EmailData;
@@ -75,6 +75,13 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
       return;
     }
 
+    const sizeCheck = checkImageSize(file, 5);
+    if (!sizeCheck.valid) {
+      alert(`⚠️ ${sizeCheck.message}`);
+      e.target.value = '';
+      return;
+    }
+
     setIsUploadingImage(true);
     setToastMessage('🔥 Enviando imagem para o Firebase Storage...');
 
@@ -84,9 +91,9 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
       
       setCode((prev) => prev + imgTag);
       setToastMessage(res.message);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro no upload de imagem:', err);
-      alert('Não foi possível realizar o upload da imagem.');
+      alert(err?.message || 'Não foi possível realizar o upload da imagem.');
     } finally {
       setIsUploadingImage(false);
       e.target.value = '';
