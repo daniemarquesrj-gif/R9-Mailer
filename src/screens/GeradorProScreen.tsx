@@ -415,6 +415,17 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
     return DEFAULT_BLOCKS;
   });
   const [selectedBlockId, setSelectedBlockId] = useState<string>(() => blocks[0]?.id || 'block-1');
+  const [activeSelection, setActiveSelection] = useState<{
+    fieldName: string;
+    start: number;
+    end: number;
+    selectedText: string;
+  } | null>(null);
+
+  // Clear active selection when selected block changes
+  useEffect(() => {
+    setActiveSelection(null);
+  }, [selectedBlockId]);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isNormalizing, setIsNormalizing] = useState<boolean>(false);
@@ -801,21 +812,164 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
     return labels[type] || { name: type, icon: 'extension' };
   };
 
-  const insertVariableToSelectedBlock = (varName: string) => {
-    if (!selectedBlock) return;
-    if (selectedBlock.type === 'text' || selectedBlock.type === 'title' || selectedBlock.type === 'subtitle') {
-      const current = selectedBlock.text || '';
-      updateSelectedBlock({ text: current + ` ${varName} ` });
-    } else if (selectedBlock.type === 'header' || selectedBlock.type === 'header_text') {
-      const current = selectedBlock.headerTitle || '';
-      updateSelectedBlock({ headerTitle: current + ` ${varName} ` });
-    } else if (selectedBlock.type === 'footer') {
-      const current = selectedBlock.footerText || '';
-      updateSelectedBlock({ footerText: current + ` ${varName} ` });
-    } else if (selectedBlock.type === 'button') {
-      const current = selectedBlock.buttonLabel || '';
-      updateSelectedBlock({ buttonLabel: current + ` ${varName} ` });
+  const handleTextSelectOrChange = (
+    e: React.SyntheticEvent<HTMLInputElement | HTMLTextAreaElement>,
+    fieldName: string
+  ) => {
+    const target = e.currentTarget;
+    const start = target.selectionStart ?? 0;
+    const end = target.selectionEnd ?? 0;
+    const fullText = target.value;
+
+    if (start < end) {
+      const selectedText = fullText.substring(start, end);
+      setActiveSelection({
+        fieldName,
+        start,
+        end,
+        selectedText,
+      });
+    } else {
+      setActiveSelection({
+        fieldName,
+        start,
+        end: start,
+        selectedText: '',
+      });
     }
+  };
+
+  const applyFormattingToSelection = (
+    formatType: 'bold' | 'italic' | 'underline' | 'strikethrough' | 'color' | 'fontSize' | 'clear' | 'variable',
+    formatValue?: string | number
+  ) => {
+    if (!selectedBlock) return;
+
+    const defaultField = (
+      (selectedBlock.type === 'header' || selectedBlock.type === 'header_text') ? 'headerTitle' :
+      selectedBlock.type === 'footer' ? 'footerText' :
+      selectedBlock.type === 'button' ? 'buttonLabel' : 'text'
+    );
+
+    const fieldName = activeSelection?.fieldName || defaultField;
+    const fullText = String((selectedBlock as any)[fieldName] || '');
+
+    let start = activeSelection?.start ?? 0;
+    let end = activeSelection?.end ?? 0;
+
+    const hasSelection = activeSelection && start < end && start <= fullText.length && end <= fullText.length;
+
+    if (hasSelection) {
+      const selectedText = fullText.substring(start, end);
+      let newSelectedText = selectedText;
+
+      switch (formatType) {
+        case 'bold': {
+          if (/^<b>[\s\S]*<\/b>$/i.test(selectedText) || /^<strong>[\s\S]*<\/strong>$/i.test(selectedText)) {
+            newSelectedText = selectedText
+              .replace(/^<b(?: style="[^"]*")?>([\s\S]*)<\/b>$/i, '$1')
+              .replace(/^<strong>([\s\S]*)<\/strong>$/i, '$1');
+          } else {
+            newSelectedText = `<b>${selectedText}</b>`;
+          }
+          break;
+        }
+        case 'italic': {
+          if (/^<i>[\s\S]*<\/i>$/i.test(selectedText) || /^<em>[\s\S]*<\/em>$/i.test(selectedText)) {
+            newSelectedText = selectedText
+              .replace(/^<i(?: style="[^"]*")?>([\s\S]*)<\/i>$/i, '$1')
+              .replace(/^<em>([\s\S]*)<\/em>$/i, '$1');
+          } else {
+            newSelectedText = `<i>${selectedText}</i>`;
+          }
+          break;
+        }
+        case 'underline': {
+          if (/^<u>[\s\S]*<\/u>$/i.test(selectedText)) {
+            newSelectedText = selectedText.replace(/^<u>([\s\S]*)<\/u>$/i, '$1');
+          } else {
+            newSelectedText = `<u>${selectedText}</u>`;
+          }
+          break;
+        }
+        case 'strikethrough': {
+          if (/^<s>[\s\S]*<\/s>$/i.test(selectedText) || /^<del>[\s\S]*<\/del>$/i.test(selectedText)) {
+            newSelectedText = selectedText
+              .replace(/^<s(?: style="[^"]*")?>([\s\S]*)<\/s>$/i, '$1')
+              .replace(/^<del>([\s\S]*)<\/del>$/i, '$1');
+          } else {
+            newSelectedText = `<s>${selectedText}</s>`;
+          }
+          break;
+        }
+        case 'color': {
+          const hex = formatValue || '#dc2626';
+          newSelectedText = `<span style="color: ${hex};">${selectedText}</span>`;
+          break;
+        }
+        case 'fontSize': {
+          const px = formatValue || 16;
+          newSelectedText = `<span style="font-size: ${px}px;">${selectedText}</span>`;
+          break;
+        }
+        case 'clear': {
+          newSelectedText = selectedText.replace(/<[^>]*>/g, '');
+          break;
+        }
+        case 'variable': {
+          newSelectedText = ` ${formatValue} `;
+          break;
+        }
+      }
+
+      const updatedFullText = fullText.substring(0, start) + newSelectedText + fullText.substring(end);
+      updateSelectedBlock({ [fieldName]: updatedFullText });
+      
+      const cleanDisplay = selectedText.replace(/<[^>]*>/g, '');
+      showToast(`Formatação aplicada no trecho selecionado: "${cleanDisplay}"`);
+
+      const newEnd = start + newSelectedText.length;
+      setActiveSelection({
+        fieldName,
+        start,
+        end: newEnd,
+        selectedText: newSelectedText,
+      });
+    } else {
+      if (formatType === 'bold') {
+        updateSelectedBlock({ isBold: !selectedBlock.isBold });
+        showToast(selectedBlock.isBold ? 'Negrito removido do bloco.' : 'Negrito aplicado no bloco. (Dica: Selecione um trecho de texto para aplicar apenas nele!)');
+      } else if (formatType === 'italic') {
+        updateSelectedBlock({ isItalic: !selectedBlock.isItalic });
+        showToast(selectedBlock.isItalic ? 'Itálico removido do bloco.' : 'Itálico aplicado no bloco. (Dica: Selecione um trecho de texto para aplicar apenas nele!)');
+      } else if (formatType === 'underline') {
+        updateSelectedBlock({ isUnderline: !selectedBlock.isUnderline });
+        showToast(selectedBlock.isUnderline ? 'Sublinhado removido do bloco.' : 'Sublinhado aplicado no bloco.');
+      } else if (formatType === 'strikethrough') {
+        updateSelectedBlock({ isStrikethrough: !selectedBlock.isStrikethrough });
+        showToast(selectedBlock.isStrikethrough ? 'Tachado removido do bloco.' : 'Tachado aplicado no bloco.');
+      } else if (formatType === 'color' && formatValue) {
+        if (fieldName === 'headerTitle' || fieldName === 'headerSubtitle') {
+          updateSelectedBlock({ headerTextColor: formatValue as string });
+        } else if (fieldName === 'buttonLabel') {
+          updateSelectedBlock({ buttonTextColor: formatValue as string });
+        } else if (fieldName === 'footerText') {
+          updateSelectedBlock({ footerTextColor: formatValue as string });
+        } else {
+          updateSelectedBlock({ textColor: formatValue as string });
+        }
+        showToast('Cor alterada para o bloco inteiro. (Dica: Selecione um trecho de texto para alterar a cor apenas dele!)');
+      } else if (formatType === 'fontSize' && formatValue) {
+        updateSelectedBlock({ fontSizePx: Number(formatValue) });
+      } else if (formatType === 'variable') {
+        updateSelectedBlock({ [fieldName]: fullText + ` ${formatValue} ` });
+        showToast(`Variável ${formatValue} inserida!`);
+      }
+    }
+  };
+
+  const insertVariableToSelectedBlock = (varName: string) => {
+    applyFormattingToSelection('variable', varName);
   };
 
   // Reusable Formatting Controls Component
@@ -858,8 +1012,32 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
             <span className="material-symbols-outlined text-[18px] text-indigo-600">format_paint</span>
             <span>Estilização de Texto & Tipografia</span>
           </span>
-          <span className="text-[11px] text-slate-400 font-medium">Tamanho, cor e forma</span>
+          <span className="text-[11px] text-slate-400 font-medium">Selecione um texto para formatar apenas o trecho</span>
         </div>
+
+        {/* Active Selection Info Badge */}
+        {activeSelection && activeSelection.start < activeSelection.end && (
+          <div className="bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg flex items-center justify-between text-xs text-indigo-900 animate-fadeIn">
+            <div className="flex items-center gap-1.5 font-medium truncate">
+              <span className="material-symbols-outlined text-[16px] text-indigo-600">match_case</span>
+              <span>Texto Selecionado:</span>
+              <code className="bg-white px-1.5 py-0.5 rounded border border-indigo-200 font-bold font-mono text-indigo-700 truncate max-w-xs">
+                "{activeSelection.selectedText.replace(/<[^>]*>/g, '')}"
+              </code>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => applyFormattingToSelection('clear')}
+                className="px-2 py-0.5 bg-white hover:bg-red-50 text-red-600 border border-slate-200 hover:border-red-200 text-[11px] rounded font-bold transition-colors"
+                title="Remover tags HTML do texto selecionado"
+              >
+                Limpar Formatação
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Row 1: Size, Family, Bold, Italic, Underline, Strikethrough, Transform */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
@@ -893,10 +1071,12 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                 <button
                   key={sz}
                   type="button"
-                  onClick={() => updateSelectedBlock({ fontSizePx: sz })}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => applyFormattingToSelection('fontSize', sz)}
                   className={`px-1.5 py-0.5 text-[10px] rounded font-semibold transition-all ${
                     currentFontSize === sz ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
+                  title={`Aplicar ${sz}px ao trecho selecionado ou ao bloco`}
                 >
                   {sz}
                 </button>
@@ -910,41 +1090,45 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 w-fit">
               <button
                 type="button"
-                onClick={() => updateSelectedBlock({ isBold: !selectedBlock.isBold })}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => applyFormattingToSelection('bold')}
                 className={`w-8 h-8 rounded font-black text-sm flex items-center justify-center transition-all ${
                   selectedBlock.isBold ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-700 hover:bg-slate-200'
                 }`}
-                title="Negrito (Bold)"
+                title="Negrito (Aplica ao trecho selecionado ou ao bloco)"
               >
                 B
               </button>
               <button
                 type="button"
-                onClick={() => updateSelectedBlock({ isItalic: !selectedBlock.isItalic })}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => applyFormattingToSelection('italic')}
                 className={`w-8 h-8 rounded italic font-serif text-sm flex items-center justify-center transition-all ${
                   selectedBlock.isItalic ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-700 hover:bg-slate-200'
                 }`}
-                title="Itálico (Italic)"
+                title="Itálico (Aplica ao trecho selecionado ou ao bloco)"
               >
                 I
               </button>
               <button
                 type="button"
-                onClick={() => updateSelectedBlock({ isUnderline: !selectedBlock.isUnderline })}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => applyFormattingToSelection('underline')}
                 className={`w-8 h-8 rounded underline font-bold text-sm flex items-center justify-center transition-all ${
                   selectedBlock.isUnderline ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-700 hover:bg-slate-200'
                 }`}
-                title="Sublinhado (Underline)"
+                title="Sublinhado (Aplica ao trecho selecionado ou ao bloco)"
               >
                 U
               </button>
               <button
                 type="button"
-                onClick={() => updateSelectedBlock({ isStrikethrough: !selectedBlock.isStrikethrough })}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => applyFormattingToSelection('strikethrough')}
                 className={`w-8 h-8 rounded line-through font-bold text-sm flex items-center justify-center transition-all ${
                   selectedBlock.isStrikethrough ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-700 hover:bg-slate-200'
                 }`}
-                title="Riscado / Tachado"
+                title="Riscado / Tachado (Aplica ao trecho selecionado ou ao bloco)"
               >
                 S
               </button>
@@ -1062,14 +1246,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
           {showTextColor && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-[11px] font-bold text-slate-700">Cor do Texto:</label>
+                <label className="block text-[11px] font-bold text-slate-700">Cor do Texto (Selecionado ou Bloco):</label>
                 <span className="text-[11px] font-mono text-slate-500 uppercase">{currentTextColor}</span>
               </div>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
                   value={currentTextColor}
-                  onChange={(e) => updateSelectedBlock({ [defaultColorKey]: e.target.value } as any)}
+                  onChange={(e) => applyFormattingToSelection('color', e.target.value)}
                   className="w-10 h-8 p-0.5 border border-slate-300 rounded cursor-pointer bg-white"
                 />
                 <div className="flex flex-wrap gap-1">
@@ -1077,10 +1261,11 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                     <button
                       key={hex}
                       type="button"
-                      onClick={() => updateSelectedBlock({ [defaultColorKey]: hex } as any)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => applyFormattingToSelection('color', hex)}
                       className="w-5 h-5 rounded-full border border-slate-300 transition-transform hover:scale-110 shadow-2xs"
                       style={{ backgroundColor: hex }}
-                      title={`Cor: ${hex}`}
+                      title={`Aplicar cor ${hex} ao texto selecionado ou bloco`}
                     />
                   ))}
                 </div>
@@ -1428,7 +1613,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                     <textarea
                       rows={3}
                       value={selectedBlock.headerTitle || ''}
-                      onChange={(e) => updateSelectedBlock({ headerTitle: e.target.value })}
+                      onChange={(e) => {
+                        updateSelectedBlock({ headerTitle: e.target.value });
+                        handleTextSelectOrChange(e, 'headerTitle');
+                      }}
+                      onSelect={(e) => handleTextSelectOrChange(e, 'headerTitle')}
+                      onKeyUp={(e) => handleTextSelectOrChange(e, 'headerTitle')}
+                      onMouseUp={(e) => handleTextSelectOrChange(e, 'headerTitle')}
+                      onFocus={(e) => handleTextSelectOrChange(e, 'headerTitle')}
                       placeholder="Ex: ESTÁCIO&#10;SUA MATRÍCULA&#10;COMEÇA AQUI!"
                       className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white font-bold leading-snug"
                     />
@@ -1440,7 +1632,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                     <textarea
                       rows={3}
                       value={selectedBlock.headerSubtitle || ''}
-                      onChange={(e) => updateSelectedBlock({ headerSubtitle: e.target.value })}
+                      onChange={(e) => {
+                        updateSelectedBlock({ headerSubtitle: e.target.value });
+                        handleTextSelectOrChange(e, 'headerSubtitle');
+                      }}
+                      onSelect={(e) => handleTextSelectOrChange(e, 'headerSubtitle')}
+                      onKeyUp={(e) => handleTextSelectOrChange(e, 'headerSubtitle')}
+                      onMouseUp={(e) => handleTextSelectOrChange(e, 'headerSubtitle')}
+                      onFocus={(e) => handleTextSelectOrChange(e, 'headerSubtitle')}
                       placeholder="Ex: Condições especiais para estudar na Estácio R9 – Taquara"
                       className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white leading-snug"
                     />
@@ -1507,7 +1706,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                   <input
                     type="text"
                     value={selectedBlock.text || ''}
-                    onChange={(e) => updateSelectedBlock({ text: e.target.value })}
+                    onChange={(e) => {
+                      updateSelectedBlock({ text: e.target.value });
+                      handleTextSelectOrChange(e, 'text');
+                    }}
+                    onSelect={(e) => handleTextSelectOrChange(e, 'text')}
+                    onKeyUp={(e) => handleTextSelectOrChange(e, 'text')}
+                    onMouseUp={(e) => handleTextSelectOrChange(e, 'text')}
+                    onFocus={(e) => handleTextSelectOrChange(e, 'text')}
                     className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white font-bold"
                   />
                 </div>
@@ -1523,7 +1729,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                   <input
                     type="text"
                     value={selectedBlock.text || ''}
-                    onChange={(e) => updateSelectedBlock({ text: e.target.value })}
+                    onChange={(e) => {
+                      updateSelectedBlock({ text: e.target.value });
+                      handleTextSelectOrChange(e, 'text');
+                    }}
+                    onSelect={(e) => handleTextSelectOrChange(e, 'text')}
+                    onKeyUp={(e) => handleTextSelectOrChange(e, 'text')}
+                    onMouseUp={(e) => handleTextSelectOrChange(e, 'text')}
+                    onFocus={(e) => handleTextSelectOrChange(e, 'text')}
                     className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white"
                   />
                 </div>
@@ -1539,7 +1752,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                   <textarea
                     rows={4}
                     value={selectedBlock.text || ''}
-                    onChange={(e) => updateSelectedBlock({ text: e.target.value })}
+                    onChange={(e) => {
+                      updateSelectedBlock({ text: e.target.value });
+                      handleTextSelectOrChange(e, 'text');
+                    }}
+                    onSelect={(e) => handleTextSelectOrChange(e, 'text')}
+                    onKeyUp={(e) => handleTextSelectOrChange(e, 'text')}
+                    onMouseUp={(e) => handleTextSelectOrChange(e, 'text')}
+                    onFocus={(e) => handleTextSelectOrChange(e, 'text')}
                     className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white font-sans leading-relaxed"
                   />
                 </div>
@@ -1556,7 +1776,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                     <input
                       type="text"
                       value={selectedBlock.buttonLabel || ''}
-                      onChange={(e) => updateSelectedBlock({ buttonLabel: e.target.value })}
+                      onChange={(e) => {
+                        updateSelectedBlock({ buttonLabel: e.target.value });
+                        handleTextSelectOrChange(e, 'buttonLabel');
+                      }}
+                      onSelect={(e) => handleTextSelectOrChange(e, 'buttonLabel')}
+                      onKeyUp={(e) => handleTextSelectOrChange(e, 'buttonLabel')}
+                      onMouseUp={(e) => handleTextSelectOrChange(e, 'buttonLabel')}
+                      onFocus={(e) => handleTextSelectOrChange(e, 'buttonLabel')}
                       className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white font-bold"
                     />
                   </div>
@@ -1905,7 +2132,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                   <textarea
                     rows={3}
                     value={selectedBlock.footerText || ''}
-                    onChange={(e) => updateSelectedBlock({ footerText: e.target.value })}
+                    onChange={(e) => {
+                      updateSelectedBlock({ footerText: e.target.value });
+                      handleTextSelectOrChange(e, 'footerText');
+                    }}
+                    onSelect={(e) => handleTextSelectOrChange(e, 'footerText')}
+                    onKeyUp={(e) => handleTextSelectOrChange(e, 'footerText')}
+                    onMouseUp={(e) => handleTextSelectOrChange(e, 'footerText')}
+                    onFocus={(e) => handleTextSelectOrChange(e, 'footerText')}
                     className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white font-sans leading-relaxed"
                   />
                 </div>
