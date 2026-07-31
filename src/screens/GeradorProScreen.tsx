@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { EmailData, Screen, TransitionType } from '../types';
 import { parseHtmlToBlocks } from '../utils/htmlParser';
+import { normalizeImage } from '../utils/imageNormalizer';
 
 export type BlockType = 
   | 'header'
@@ -289,13 +290,13 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         const link = block.imageLink;
         const caption = block.imageCaption;
 
-        let imgHtml = `<img src="${imgUrl}" alt="${alt}" style="max-width: 100%; height: auto; display: block; border: 0; outline: none; margin: 0 auto; border-radius: 6px;" />`;
+        let imgHtml = `<img src="${imgUrl}" alt="${alt}" width="100%" style="width: 100% !important; max-width: 100% !important; height: auto !important; display: block; border: 0; outline: none; margin: 0 auto; border-radius: 6px; object-fit: contain;" />`;
         if (link) {
-          imgHtml = `<a href="${link}" target="_blank" style="text-decoration: none;">${imgHtml}</a>`;
+          imgHtml = `<a href="${link}" target="_blank" style="text-decoration: none; display: block; width: 100%;">${imgHtml}</a>`;
         }
 
         htmlContent += `
-    <div style="padding: 16px 28px; text-align: center; font-family: Helvetica, Arial, sans-serif;">
+    <div class="img-container" style="padding: 16px 28px; text-align: center; font-family: Helvetica, Arial, sans-serif; box-sizing: border-box; width: 100%;">
       ${imgHtml}
       ${caption ? `<p style="margin: 8px 0 0 0; font-size: 12px; color: #64748b; font-style: italic;">${caption}</p>` : ''}
     </div>`;
@@ -375,13 +376,18 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #334155; margin: 0; padding: 20px; -webkit-text-size-adjust: 100%; }
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #334155; margin: 0; padding: 20px; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     .card { background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; max-width: 600px; margin: 0 auto; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
     a { color: #4f46e5; }
+    img { max-width: 100% !important; height: auto !important; display: block; border: 0; outline: none; }
+    .card img { width: 100% !important; max-width: 100% !important; height: auto !important; object-fit: contain; }
+    .img-container { width: 100% !important; box-sizing: border-box !important; }
     @media only screen and (max-width: 600px) {
       body { padding: 8px !important; }
       .card { border-radius: 0 !important; border: none !important; width: 100% !important; }
       .btn { display: block !important; width: 100% !important; text-align: center !important; padding: 14px 16px !important; box-sizing: border-box !important; font-size: 16px !important; }
+      .img-container { padding: 12px 12px !important; }
+      .img-container img { width: 100% !important; max-width: 100% !important; height: auto !important; }
     }
   </style>
 </head>
@@ -410,6 +416,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
   const [selectedBlockId, setSelectedBlockId] = useState<string>(() => blocks[0]?.id || 'block-1');
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isNormalizing, setIsNormalizing] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
   const lastParsedHtmlRef = useRef<string | undefined>(emailData.customCodeHtml);
@@ -474,7 +481,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
     e.target.value = '';
   };
 
-  const handleImageBlockUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageBlockUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -483,19 +490,49 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        updateSelectedBlock({ imageUrl: dataUrl });
-        showToast(`Imagem "${file.name}" enviada com sucesso!`);
-      }
-    };
-    reader.onerror = () => {
-      showToast('Ocorreu um erro ao carregar a imagem. Tente novamente.');
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    setIsNormalizing(true);
+    showToast('Normalizando e ajustando imagem para celular e computador...');
+    try {
+      const normalizedDataUrl = await normalizeImage(file, 1200);
+      updateSelectedBlock({ imageUrl: normalizedDataUrl });
+      showToast(`✨ Imagem "${file.name}" normalizada e pronta para celular e PC!`);
+    } catch (err) {
+      console.error('Erro na normalização de imagem:', err);
+      // Fallback to standard reader
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        if (dataUrl) {
+          updateSelectedBlock({ imageUrl: dataUrl });
+          showToast(`Imagem "${file.name}" enviada com sucesso!`);
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsNormalizing(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleNormalizeExistingImage = async () => {
+    const selected = blocks.find((b) => b.id === selectedBlockId);
+    if (!selected || !selected.imageUrl) {
+      showToast('Insira ou envie uma imagem primeiro para normalizar.');
+      return;
+    }
+
+    setIsNormalizing(true);
+    showToast('Ajustando dimensões e proporções para celular e computador...');
+
+    try {
+      const normalized = await normalizeImage(selected.imageUrl, 1200);
+      updateSelectedBlock({ imageUrl: normalized });
+      showToast('✨ Imagem normalizada! Agora ela se ajusta perfeitamente em telas de celular e PC.');
+    } catch (err) {
+      showToast('Não foi possível ajustar a imagem. Verifique se a URL é acessível.');
+    } finally {
+      setIsNormalizing(false);
+    }
   };
 
   const showToast = (msg: string) => {
@@ -1530,19 +1567,35 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                     )}
                   </div>
 
-                  {/* Upload Action Area */}
+                  {/* Upload & Normalization Action Area */}
                   <div className="flex flex-col sm:flex-row items-center gap-3 bg-indigo-50/60 p-3.5 rounded-xl border border-indigo-100">
                     <button
                       type="button"
+                      disabled={isNormalizing}
                       onClick={() => imageFileInputRef.current?.click()}
-                      className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                      className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer shrink-0"
                     >
-                      <span className="material-symbols-outlined text-[18px]">upload_file</span>
-                      <span>Fazer Upload de Imagem do Computador</span>
+                      <span className="material-symbols-outlined text-[18px]">
+                        {isNormalizing ? 'sync' : 'upload_file'}
+                      </span>
+                      <span>{isNormalizing ? 'Processando Imagem...' : 'Fazer Upload de Imagem do Computador'}</span>
                     </button>
 
+                    {selectedBlock.imageUrl && (
+                      <button
+                        type="button"
+                        disabled={isNormalizing}
+                        onClick={handleNormalizeExistingImage}
+                        className="w-full sm:w-auto px-3.5 py-2.5 bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs rounded-lg border border-indigo-200 shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                        title="Redimensiona e otimiza para ficar visível em qualquer celular e PC"
+                      >
+                        <span className="material-symbols-outlined text-[16px] text-indigo-600">tune</span>
+                        <span>Normalizar para Celular e PC</span>
+                      </button>
+                    )}
+
                     <span className="text-xs text-indigo-900/80 font-medium text-center sm:text-left">
-                      Suporta PNG, JPG, WEBP, GIF, SVG. A imagem é incorporada diretamente no e-mail sem precisar de hospedagem!
+                      Suporta PNG, JPG, WEBP, GIF, SVG. A imagem é otimizada e incorporada diretamente no e-mail com resposta adaptativa para Celular e PC.
                     </span>
                   </div>
 
@@ -1550,7 +1603,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                   {selectedBlock.imageUrl && (
                     <div className="bg-slate-100 border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-16 h-14 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+                        <div className="w-16 h-14 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs relative">
                           <img
                             src={selectedBlock.imageUrl}
                             alt={selectedBlock.imageAlt || 'Preview'}
@@ -1561,9 +1614,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                           />
                         </div>
                         <div className="min-w-0 text-xs">
-                          <p className="font-bold text-slate-800 truncate">
-                            {selectedBlock.imageAlt || 'Imagem Selecionada'}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-slate-800 truncate">
+                              {selectedBlock.imageAlt || 'Imagem Selecionada'}
+                            </p>
+                            <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-medium">
+                              Visível em Celular e PC
+                            </span>
+                          </div>
                           <p className="text-[11px] text-slate-500 font-mono truncate max-w-xs md:max-w-md">
                             {selectedBlock.imageUrl.length > 60
                               ? `${selectedBlock.imageUrl.substring(0, 60)}...`
@@ -1572,15 +1630,17 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => updateSelectedBlock({ imageUrl: '' })}
-                        className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-lg border border-red-200 transition-colors flex items-center gap-1 shrink-0"
-                        title="Remover Imagem"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">delete</span>
-                        <span>Remover</span>
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => updateSelectedBlock({ imageUrl: '' })}
+                          className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+                          title="Remover Imagem"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                          <span>Remover</span>
+                        </button>
+                      </div>
                     </div>
                   )}
 
