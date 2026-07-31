@@ -338,7 +338,7 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         const web = block.websiteUrl;
 
         htmlContent += `
-    <div style="padding: 16px 28px; text-align: center; font-family: Helvetica, Arial, sans-serif;">
+    <div class="social-block" style="padding: 16px 28px; text-align: center; font-family: Helvetica, Arial, sans-serif;">
       <div style="display: inline-flex; gap: 16px; align-items: center; font-size: 13px; font-weight: bold;">
         ${insta ? `<a href="${insta}" style="color: #4f46e5; text-decoration: none;">Instagram</a>` : ''}
         ${linkedin ? `<a href="${linkedin}" style="color: #4f46e5; text-decoration: none;">LinkedIn</a>` : ''}
@@ -411,6 +411,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const imageFileInputRef = useRef<HTMLInputElement | null>(null);
   const lastParsedHtmlRef = useRef<string | undefined>(emailData.customCodeHtml);
 
   // Continuously sync compiled HTML from Gerador Visual blocks to global emailData.customCodeHtml
@@ -470,6 +471,30 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
       alert('Ocorreu um erro ao ler o arquivo. Tente novamente.');
     };
     reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleImageBlockUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Por favor, selecione um arquivo de imagem válido (PNG, JPG, WEBP, GIF, SVG).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        updateSelectedBlock({ imageUrl: dataUrl });
+        showToast(`Imagem "${file.name}" enviada com sucesso!`);
+      }
+    };
+    reader.onerror = () => {
+      showToast('Ocorreu um erro ao carregar a imagem. Tente novamente.');
+    };
+    reader.readAsDataURL(file);
     e.target.value = '';
   };
 
@@ -1481,33 +1506,133 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
 
             {/* IMAGE FORM */}
             {selectedBlock.type === 'image' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">URL da Imagem</label>
-                  <input
-                    type="text"
-                    value={selectedBlock.imageUrl || ''}
-                    onChange={(e) => updateSelectedBlock({ imageUrl: e.target.value })}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white"
-                  />
+              <div className="space-y-4">
+                {/* Hidden Image File Input */}
+                <input
+                  type="file"
+                  ref={imageFileInputRef}
+                  onChange={handleImageBlockUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                <div className="bg-white border border-slate-200 p-4 rounded-xl space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[18px] text-indigo-600">image</span>
+                      <span>Imagem / Banner do E-mail</span>
+                    </label>
+                    {selectedBlock.imageUrl && (
+                      <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                        {selectedBlock.imageUrl.startsWith('data:') ? 'Imagem Local Enviada (Base64)' : 'URL Externa'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Upload Action Area */}
+                  <div className="flex flex-col sm:flex-row items-center gap-3 bg-indigo-50/60 p-3.5 rounded-xl border border-indigo-100">
+                    <button
+                      type="button"
+                      onClick={() => imageFileInputRef.current?.click()}
+                      className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">upload_file</span>
+                      <span>Fazer Upload de Imagem do Computador</span>
+                    </button>
+
+                    <span className="text-xs text-indigo-900/80 font-medium text-center sm:text-left">
+                      Suporta PNG, JPG, WEBP, GIF, SVG. A imagem é incorporada diretamente no e-mail sem precisar de hospedagem!
+                    </span>
+                  </div>
+
+                  {/* Image Preview Box */}
+                  {selectedBlock.imageUrl && (
+                    <div className="bg-slate-100 border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-16 h-14 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+                          <img
+                            src={selectedBlock.imageUrl}
+                            alt={selectedBlock.imageAlt || 'Preview'}
+                            className="max-w-full max-h-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
+                        <div className="min-w-0 text-xs">
+                          <p className="font-bold text-slate-800 truncate">
+                            {selectedBlock.imageAlt || 'Imagem Selecionada'}
+                          </p>
+                          <p className="text-[11px] text-slate-500 font-mono truncate max-w-xs md:max-w-md">
+                            {selectedBlock.imageUrl.length > 60
+                              ? `${selectedBlock.imageUrl.substring(0, 60)}...`
+                              : selectedBlock.imageUrl}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => updateSelectedBlock({ imageUrl: '' })}
+                        className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-lg border border-red-200 transition-colors flex items-center gap-1 shrink-0"
+                        title="Remover Imagem"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                        <span>Remover</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* URL fallback / direct edit */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Ou digite/cole a URL externa da imagem:
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedBlock.imageUrl || ''}
+                      onChange={(e) => updateSelectedBlock({ imageUrl: e.target.value })}
+                      placeholder="https://sua-empresa.com/banner.jpg"
+                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white font-mono"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Texto Alternativo (Alt)</label>
-                  <input
-                    type="text"
-                    value={selectedBlock.imageAlt || ''}
-                    onChange={(e) => updateSelectedBlock({ imageAlt: e.target.value })}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Legenda Opcional</label>
-                  <input
-                    type="text"
-                    value={selectedBlock.imageCaption || ''}
-                    onChange={(e) => updateSelectedBlock({ imageCaption: e.target.value })}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white"
-                  />
+
+                {/* Metadata & Click Link inputs */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Link ao Clicar na Imagem (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedBlock.imageLink || ''}
+                      onChange={(e) => updateSelectedBlock({ imageLink: e.target.value })}
+                      placeholder="https://seusite.com/promocao"
+                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Texto Alternativo (Alt)</label>
+                    <input
+                      type="text"
+                      value={selectedBlock.imageAlt || ''}
+                      onChange={(e) => updateSelectedBlock({ imageAlt: e.target.value })}
+                      placeholder="Ex: Banner Promocional"
+                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Legenda Opcional</label>
+                    <input
+                      type="text"
+                      value={selectedBlock.imageCaption || ''}
+                      onChange={(e) => updateSelectedBlock({ imageCaption: e.target.value })}
+                      placeholder="Ex: *Consulte regulamento"
+                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -1583,7 +1708,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
 
             {/* SOCIAL FORM */}
             {selectedBlock.type === 'social' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Instagram URL</label>
                   <input
@@ -1591,6 +1716,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                     value={selectedBlock.instagramUrl || ''}
                     onChange={(e) => updateSelectedBlock({ instagramUrl: e.target.value })}
                     className="w-full text-xs p-2 border border-slate-300 rounded-lg bg-white"
+                    placeholder="https://instagram.com/..."
                   />
                 </div>
                 <div>
@@ -1600,6 +1726,17 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                     value={selectedBlock.linkedinUrl || ''}
                     onChange={(e) => updateSelectedBlock({ linkedinUrl: e.target.value })}
                     className="w-full text-xs p-2 border border-slate-300 rounded-lg bg-white"
+                    placeholder="https://linkedin.com/..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Facebook URL</label>
+                  <input
+                    type="text"
+                    value={selectedBlock.facebookUrl || ''}
+                    onChange={(e) => updateSelectedBlock({ facebookUrl: e.target.value })}
+                    className="w-full text-xs p-2 border border-slate-300 rounded-lg bg-white"
+                    placeholder="https://facebook.com/..."
                   />
                 </div>
                 <div>
@@ -1609,6 +1746,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                     value={selectedBlock.websiteUrl || ''}
                     onChange={(e) => updateSelectedBlock({ websiteUrl: e.target.value })}
                     className="w-full text-xs p-2 border border-slate-300 rounded-lg bg-white"
+                    placeholder="https://..."
                   />
                 </div>
               </div>

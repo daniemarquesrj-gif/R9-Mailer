@@ -323,11 +323,82 @@ const BLOCK_TAGS = new Set([
 ]);
 
 /**
- * Checks if a node contains structural block children or buttons/images
+ * Checks if a node is or contains a social media block
+ */
+function isSocialElement(node: Element, _styles?: Record<string, string>): boolean {
+  const classList = (node.className || '').toLowerCase();
+  const id = (node.id || '').toLowerCase();
+  if (classList.includes('social') || id.includes('social') || classList.includes('redes')) return true;
+
+  const anchors = Array.from(node.querySelectorAll('a'));
+  if (anchors.length === 0) return false;
+
+  const socialKeywords = [
+    'instagram', 'linkedin', 'facebook', 'twitter', 'x.com', 
+    'youtube', 'whatsapp', 'wa.me', 'tiktok', 'pinterest', 'website', 'redes'
+  ];
+
+  let socialMatchCount = 0;
+  for (const a of anchors) {
+    const href = (a.getAttribute('href') || '').toLowerCase();
+    const text = (a.textContent || '').toLowerCase().trim();
+
+    const isMatch = socialKeywords.some((kw) => href.includes(kw) || text.includes(kw));
+    if (isMatch) {
+      socialMatchCount++;
+    }
+  }
+
+  const fullText = (node.textContent || '').trim();
+
+  if (socialMatchCount >= 1) {
+    if (fullText.length < 250 || anchors.length >= 2 || classList.includes('social')) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Extracts social platform URLs from a social block node
+ */
+function parseSocialData(node: Element) {
+  const anchors = Array.from(node.querySelectorAll('a'));
+  let instagramUrl: string | undefined;
+  let linkedinUrl: string | undefined;
+  let facebookUrl: string | undefined;
+  let websiteUrl: string | undefined;
+
+  anchors.forEach((a) => {
+    const href = a.getAttribute('href') || '';
+    if (!href || href === '#') return;
+    const hrefLower = href.toLowerCase();
+    const textLower = (a.textContent || '').toLowerCase().trim();
+
+    if (hrefLower.includes('instagram') || textLower.includes('instagram')) {
+      instagramUrl = href;
+    } else if (hrefLower.includes('linkedin') || textLower.includes('linkedin')) {
+      linkedinUrl = href;
+    } else if (hrefLower.includes('facebook') || textLower.includes('facebook')) {
+      facebookUrl = href;
+    } else if (hrefLower.includes('twitter') || hrefLower.includes('x.com') || textLower.includes('twitter')) {
+      if (!websiteUrl) websiteUrl = href;
+    } else {
+      if (!websiteUrl) websiteUrl = href;
+    }
+  });
+
+  return { instagramUrl, linkedinUrl, facebookUrl, websiteUrl };
+}
+
+/**
+ * Checks if a node contains structural block children or buttons/images/social
  */
 function hasBlockChildren(node: Element, styles: Record<string, string>): boolean {
   if (node.querySelector('img')) return true;
   if (node.querySelector('hr')) return true;
+  if (isSocialElement(node, styles)) return true;
 
   // Check if contains a button
   const anchors = Array.from(node.querySelectorAll('a, button'));
@@ -602,32 +673,16 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
     }
 
     // 5. SOCIAL LINKS
-    const socialAnchors = Array.from(node.querySelectorAll('a')).filter((a) => {
-      const href = (a.getAttribute('href') || '').toLowerCase();
-      return href.includes('instagram') || href.includes('linkedin') || href.includes('facebook') || href.includes('twitter') || href.includes('youtube');
-    });
-
-    if (socialAnchors.length >= 2) {
-      let insta: string | undefined;
-      let linkedin: string | undefined;
-      let fb: string | undefined;
-      let web: string | undefined;
-
-      socialAnchors.forEach((a) => {
-        const href = a.getAttribute('href') || '';
-        if (href.includes('instagram')) insta = href;
-        else if (href.includes('linkedin')) linkedin = href;
-        else if (href.includes('facebook')) fb = href;
-        else if (!web) web = href;
-      });
+    if (isSocialElement(node, styles)) {
+      const { instagramUrl, linkedinUrl, facebookUrl, websiteUrl } = parseSocialData(node);
 
       blocks.push({
         id: createId(),
         type: 'social',
-        instagramUrl: insta,
-        linkedinUrl: linkedin,
-        facebookUrl: fb,
-        websiteUrl: web,
+        instagramUrl,
+        linkedinUrl,
+        facebookUrl,
+        websiteUrl,
       });
       markAllVisited(node);
       return;
