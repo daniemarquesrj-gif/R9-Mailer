@@ -3,10 +3,12 @@ import { EmailData, Screen, TransitionType } from '../types';
 import { parseHtmlToBlocks } from '../utils/htmlParser';
 import { normalizeImage } from '../utils/imageNormalizer';
 import { uploadToPublicHost, checkImageSize } from '../utils/imageUploader';
+import { DEFAULT_TEMPLATES } from '../data/templates';
 
 export type BlockType = 
   | 'header'
   | 'header_text'
+  | 'header_image'
   | 'title'
   | 'subtitle'
   | 'text'
@@ -224,6 +226,25 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         break;
       }
 
+      case 'header_image': {
+        const imgUrl = block.imageUrl || 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=600&h=200&q=80';
+        const alt = block.imageAlt || 'Cabeçalho do E-mail';
+        const link = block.imageLink;
+        const caption = block.imageCaption;
+
+        let imgHtml = `<img src="${imgUrl}" alt="${alt}" class="email-header-img" width="100%" style="width: 100% !important; max-width: 100% !important; height: auto !important; display: block; border: 0; outline: none; margin: 0 auto; object-fit: cover;" />`;
+        if (link) {
+          imgHtml = `<a href="${link}" target="_blank" style="text-decoration: none; display: block; width: 100%;">${imgHtml}</a>`;
+        }
+
+        htmlContent += `
+    <div class="header-img-container" style="padding: 0; width: 100%; text-align: center; font-family: Helvetica, Arial, sans-serif; box-sizing: border-box; overflow: hidden;">
+      ${imgHtml}
+      ${caption ? `<p style="margin: 8px 0 0 0; font-size: 11px; color: #64748b; font-style: italic; padding: 0 16px;">${caption}</p>` : ''}
+    </div>`;
+        break;
+      }
+
       case 'title': {
         const align = block.alignment || 'left';
         const txt = block.text || 'Título do Bloco';
@@ -291,7 +312,7 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         const link = block.imageLink;
         const caption = block.imageCaption;
 
-        let imgHtml = `<img src="${imgUrl}" alt="${alt}" width="100%" style="width: 100% !important; max-width: 100% !important; height: auto !important; display: block; border: 0; outline: none; margin: 0 auto; border-radius: 6px; object-fit: contain;" />`;
+        let imgHtml = `<img src="${imgUrl}" alt="${alt}" class="email-banner-img" width="100%" style="width: 100% !important; max-width: 100% !important; height: auto !important; display: block; border: 0; outline: none; margin: 0 auto; border-radius: 6px; object-fit: contain;" />`;
         if (link) {
           imgHtml = `<a href="${link}" target="_blank" style="text-decoration: none; display: block; width: 100%;">${imgHtml}</a>`;
         }
@@ -380,9 +401,25 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
     body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #334155; margin: 0; padding: 20px; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     .card { background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; max-width: 600px; margin: 0 auto; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
     a { color: #4f46e5; }
-    img { max-width: 100% !important; height: auto !important; display: block; border: 0; outline: none; }
-    .card img { width: 100% !important; max-width: 100% !important; height: auto !important; object-fit: contain; }
+    img { max-width: 100%; height: auto; border: 0; outline: none; -ms-interpolation-mode: bicubic; }
+    .img-container img, img.email-banner-img { width: 100% !important; max-width: 100% !important; height: auto !important; display: block; object-fit: contain; }
     .img-container { width: 100% !important; box-sizing: border-box !important; }
+
+    /* Proteção para Emojis em Clientes de E-mail (Outlook, Gmail Web, Apple Mail) */
+    img.emoji, img.CToW4e, img[src*="emoji"], img[src*="emoticons"], img[alt*="emoji"], img[style*="width: 1em"], img[style*="height: 1em"] {
+      width: 1.2em !important;
+      height: 1.2em !important;
+      max-width: 1.2em !important;
+      max-height: 1.2em !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      display: inline-block !important;
+      vertical-align: -0.2em !important;
+      margin: 0 0.15em !important;
+      border: 0 !important;
+      outline: none !important;
+      object-fit: contain !important;
+    }
     @media only screen and (max-width: 600px) {
       body { padding: 8px !important; }
       .card { border-radius: 0 !important; border: none !important; width: 100% !important; }
@@ -429,6 +466,8 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isNormalizing, setIsNormalizing] = useState<boolean>(false);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
   const lastParsedHtmlRef = useRef<string | undefined>(emailData.customCodeHtml);
@@ -600,6 +639,36 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const handleSelectModel = (templateId: string) => {
+    const tmpl = DEFAULT_TEMPLATES.find((t) => t.id === templateId);
+    if (!tmpl) return;
+
+    setEmailData((prev) => ({
+      ...prev,
+      activeTemplateId: tmpl.id,
+      headerTitle: tmpl.headerTitle || prev.headerTitle,
+      greeting: tmpl.greeting || prev.greeting,
+      buttonText: tmpl.buttonText || prev.buttonText,
+      buttonUrl: tmpl.buttonUrl || prev.buttonUrl,
+      bodyText: tmpl.bodyText || prev.bodyText,
+      footerText: tmpl.footerText || prev.footerText,
+      primaryColor: tmpl.primaryColor || prev.primaryColor,
+      customCodeHtml: tmpl.customCodeHtml,
+    }));
+
+    if (tmpl.customCodeHtml) {
+      const parsed = parseHtmlToBlocks(tmpl.customCodeHtml);
+      if (parsed && parsed.length > 0) {
+        setBlocks(parsed);
+        setSelectedBlockId(parsed[0].id);
+        showToast(`✓ Modelo "${tmpl.name}" carregado com ${parsed.length} blocos no Gerador Visual!`);
+        return;
+      }
+    }
+
+    showToast(`✓ Modelo "${tmpl.name}" carregado com sucesso!`);
+  };
+
   const selectedBlock = blocks.find((b) => b.id === selectedBlockId) || blocks[0];
 
   // Block management handlers
@@ -634,6 +703,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
           fontSizePx: 24,
           headerSubtitleSizePx: 15,
           isBold: true,
+        };
+        break;
+      case 'header_image':
+        newBlock = {
+          ...newBlock,
+          imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=600&h=200&q=80',
+          imageAlt: 'Imagem de Cabeçalho do E-mail',
+          imageCaption: '',
         };
         break;
       case 'title':
@@ -727,6 +804,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
     showToast(`Bloco [${type.toUpperCase()}] adicionado com sucesso!`);
   };
 
+  const handleReorder = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= blocks.length || toIndex >= blocks.length) return;
+    const newBlocks = [...blocks];
+    const [draggedItem] = newBlocks.splice(fromIndex, 1);
+    newBlocks.splice(toIndex, 0, draggedItem);
+    setBlocks(newBlocks);
+  };
+
   const handleMoveUp = (index: number) => {
     if (index === 0) return;
     const newBlocks = [...blocks];
@@ -770,27 +855,9 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
   };
 
   const updateSelectedBlock = (updatedProps: Partial<EmailBlock>) => {
-    setBlocks((prev) =>
+    setBlocks(prev =>
       prev.map((b) => (b.id === selectedBlockId ? { ...b, ...updatedProps } : b))
     );
-  };
-
-  const handleApplyToEditor = () => {
-    const compiledHtml = compileBlocksToHtml(blocks);
-    setEmailData((prev) => ({
-      ...prev,
-      customCodeHtml: compiledHtml,
-    }));
-    onNavigate('editor', 'push');
-  };
-
-  const handleGoToVisualizacao = () => {
-    const compiledHtml = compileBlocksToHtml(blocks);
-    setEmailData((prev) => ({
-      ...prev,
-      customCodeHtml: compiledHtml,
-    }));
-    onNavigate('visualizacao', 'push');
   };
 
   const compiledHtml = compileBlocksToHtml(blocks);
@@ -799,6 +866,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
     const labels: Record<BlockType, { name: string; icon: string }> = {
       header_text: { name: 'Texto do Cabeçalho / Banner', icon: 'web_asset' },
       header: { name: 'Cabeçalho', icon: 'web_asset' },
+      header_image: { name: 'Imagem de Cabeçalho', icon: 'view_day' },
       title: { name: 'Título', icon: 'title' },
       subtitle: { name: 'Subtítulo', icon: 'format_size' },
       text: { name: 'Texto', icon: 'notes' },
@@ -1368,12 +1436,61 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
             </button>
             <button
               type="button"
-              onClick={handleGoToVisualizacao}
+              onClick={() => onNavigate('visualizacao', 'push')}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-xs transition-all active:scale-95 flex items-center gap-1.5 text-xs"
             >
               <span className="material-symbols-outlined text-[18px]">visibility</span>
               <span>Ver Visualização</span>
             </button>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            MODELOS PRONTOS DE E-MAIL (TEMPLATES)
+        ========================================================================= */}
+        <div className="bg-slate-50/90 border border-slate-200 p-4 rounded-xl space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-slate-800">
+              <span className="material-symbols-outlined text-indigo-600 text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                dashboard_customize
+              </span>
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-800">
+                MODELOS PRONTOS DE E-MAIL:
+              </span>
+            </div>
+            <span className="text-[11px] text-slate-500 font-medium">
+              Clique em um modelo para carregar a estrutura pronta de e-mail no Gerador Visual
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-2.5 items-center">
+            {DEFAULT_TEMPLATES.map((tmpl) => {
+              const isActive = emailData.activeTemplateId === tmpl.id;
+              return (
+                <button
+                  key={tmpl.id}
+                  type="button"
+                  onClick={() => handleSelectModel(tmpl.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-xs uppercase transition-all active:scale-95 ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-400 ring-offset-1'
+                      : 'bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-300 shadow-2xs'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    {tmpl.id === 'padrao' && 'description'}
+                    {tmpl.id === 'boas-vindas' && 'handshake'}
+                    {tmpl.id === 'newsletter' && 'newspaper'}
+                    {tmpl.id === 'oferta' && 'local_offer'}
+                    {tmpl.id === 'pesquisa' && 'quiz'}
+                  </span>
+                  <span>{tmpl.name}</span>
+                  {isActive && (
+                    <span className="w-2.5 h-2.5 bg-white rounded-full ml-1 animate-pulse" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -1400,6 +1517,15 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
               >
                 <span className="material-symbols-outlined text-[16px]">web_asset</span>
                 <span>+ Texto do Cabeçalho</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleAddBlock('header_image')}
+                className="px-2.5 py-1.5 bg-indigo-100 border border-indigo-300 hover:border-indigo-600 hover:text-indigo-800 rounded-lg text-xs font-extrabold text-indigo-900 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[16px]">view_day</span>
+                <span>+ Imagem de Cabeçalho</span>
               </button>
 
               <button
@@ -1495,22 +1621,74 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
           </div>
 
           {/* Active Structure Blocks List */}
+          <div className="flex items-center justify-between text-xs text-slate-500 font-medium px-1">
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-[16px] text-indigo-600">drag_indicator</span>
+              <span><strong>Arraste e solte</strong> o ícone de cada bloco para reordenar, ou utilize as setas <strong>▲ / ▼</strong>.</span>
+            </span>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {blocks.map((block, idx) => {
               const isSelected = block.id === selectedBlockId;
+              const isBeingDragged = draggedIdx === idx;
+              const isTargeted = dragOverIdx === idx && draggedIdx !== idx;
               const { name, icon } = getBlockLabel(block.type);
 
               return (
                 <div
                   key={block.id}
+                  draggable
+                  onDragStart={(e) => {
+                    setDraggedIdx(idx);
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', String(idx));
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (dragOverIdx !== idx) {
+                      setDragOverIdx(idx);
+                    }
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    if (dragOverIdx !== idx) {
+                      setDragOverIdx(idx);
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (draggedIdx !== null && draggedIdx !== idx) {
+                      handleReorder(draggedIdx, idx);
+                    }
+                    setDraggedIdx(null);
+                    setDragOverIdx(null);
+                  }}
+                  onDragEnd={() => {
+                    setDraggedIdx(null);
+                    setDragOverIdx(null);
+                  }}
                   onClick={() => setSelectedBlockId(block.id)}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                    isSelected
+                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
+                    isBeingDragged
+                      ? 'opacity-40 border-dashed border-indigo-500 bg-indigo-50/50'
+                      : isTargeted
+                      ? 'bg-indigo-100/90 border-indigo-600 ring-2 ring-indigo-500/40 scale-[1.01] shadow-md'
+                      : isSelected
                       ? 'bg-indigo-50/80 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs'
                       : 'bg-white border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 overflow-hidden">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    {/* Drag Handle Icon */}
+                    <div
+                      className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-indigo-600 transition-colors shrink-0 flex items-center justify-center p-0.5 rounded hover:bg-slate-100"
+                      title="Segure e arraste para posicionar o bloco"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
+                    </div>
+
                     <span className="text-xs font-bold text-slate-400 shrink-0 w-5">#{idx + 1}</span>
                     <span className="material-symbols-outlined text-indigo-600 shrink-0">{icon}</span>
                     <div className="truncate">
@@ -1576,28 +1754,47 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
               </h2>
 
               {/* Variable Injection Chips */}
-              <div className="hidden sm:flex items-center gap-1.5">
+              <div className="hidden sm:flex flex-wrap items-center gap-1.5">
                 <span className="text-[11px] font-semibold text-slate-500">Inserir Variável:</span>
                 <button
                   type="button"
                   onClick={() => insertVariableToSelectedBlock('{{nome}}')}
-                  className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[11px] font-mono rounded hover:bg-indigo-50"
+                  className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[11px] font-mono font-bold rounded hover:bg-indigo-50 shadow-2xs"
+                  title="Inserir Nome"
                 >
                   &#123;&#123;nome&#125;&#125;
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertVariableToSelectedBlock('{{empresa}}')}
-                  className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[11px] font-mono rounded hover:bg-indigo-50"
+                  onClick={() => insertVariableToSelectedBlock('{{email}}')}
+                  className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[11px] font-mono font-bold rounded hover:bg-indigo-50 shadow-2xs"
+                  title="Inserir Email"
                 >
-                  &#123;&#123;empresa&#125;&#125;
+                  &#123;&#123;email&#125;&#125;
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertVariableToSelectedBlock('{{email}}')}
-                  className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[11px] font-mono rounded hover:bg-indigo-50"
+                  onClick={() => insertVariableToSelectedBlock('{{var1}}')}
+                  className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[11px] font-mono font-bold rounded hover:bg-indigo-50 shadow-2xs"
+                  title="Inserir Var1 (Livre)"
                 >
-                  &#123;&#123;email&#125;&#125;
+                  &#123;&#123;var1&#125;&#125;
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertVariableToSelectedBlock('{{var2}}')}
+                  className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[11px] font-mono font-bold rounded hover:bg-indigo-50 shadow-2xs"
+                  title="Inserir Var2 (Livre)"
+                >
+                  &#123;&#123;var2&#125;&#125;
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertVariableToSelectedBlock('{{var3}}')}
+                  className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[11px] font-mono font-bold rounded hover:bg-indigo-50 shadow-2xs"
+                  title="Inserir Var3 (Livre)"
+                >
+                  &#123;&#123;var3&#125;&#125;
                 </button>
               </div>
             </div>
@@ -1695,6 +1892,230 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                   defaultColorKey: 'headerTextColor',
                   defaultBgKey: 'headerBgColor',
                 })}
+              </div>
+            )}
+
+            {/* HEADER IMAGE FORM */}
+            {selectedBlock.type === 'header_image' && (
+              <div className="space-y-4">
+                {/* Hidden Image File Input */}
+                <input
+                  type="file"
+                  ref={imageFileInputRef}
+                  onChange={handleImageBlockUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                {/* Dimension Specifications Banner */}
+                <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-4 rounded-xl shadow-sm border border-indigo-700/50 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[20px] text-amber-400">straighten</span>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-indigo-100">
+                      Medidas Recomendadas do Cabeçalho (Evita Quebra de Layout)
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div className="bg-white/10 backdrop-blur-sm p-2.5 rounded-lg border border-white/10 text-center">
+                      <span className="text-[10px] uppercase font-bold text-indigo-200 block">Largura Ideal</span>
+                      <span className="text-sm font-extrabold text-white">600 px</span>
+                      <span className="text-[10px] text-indigo-200 block">(100% da caixa do e-mail)</span>
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-sm p-2.5 rounded-lg border border-white/10 text-center">
+                      <span className="text-[10px] uppercase font-bold text-indigo-200 block">Altura Recomendada</span>
+                      <span className="text-sm font-extrabold text-amber-300">150 px – 250 px</span>
+                      <span className="text-[10px] text-indigo-200 block">(Proporção ~3:1 a 4:1)</span>
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-sm p-2.5 rounded-lg border border-white/10 text-center">
+                      <span className="text-[10px] uppercase font-bold text-indigo-200 block">Formato & Tamanho</span>
+                      <span className="text-sm font-extrabold text-white">PNG / JPG</span>
+                      <span className="text-[10px] text-indigo-200 block">(Até 5MB)</span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-indigo-100/90 leading-relaxed bg-black/20 p-2.5 rounded-lg border border-white/5">
+                    💡 <strong>Dica do Especialista:</strong> O cabeçalho é a primeira impressão da sua mensagem. Mantendo a imagem na proporção de <strong>600x200px</strong>, ela cobrirá todo o topo da caixa de entrada perfeitamente no <strong>Gmail, Outlook, Apple Mail e leitores de celular</strong>, sem ficar borrada, nem esticada ou cortada.
+                  </p>
+                </div>
+
+                <div className="bg-white border border-slate-200 p-4 rounded-xl space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[18px] text-indigo-600">view_day</span>
+                      <span>Imagem Banner de Cabeçalho</span>
+                    </label>
+                    {selectedBlock.imageUrl && (
+                      selectedBlock.imageUrl.includes('firebasestorage') ? (
+                        <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-300 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px] text-amber-600">local_fire_department</span>
+                          Firebase Storage — URL Pública
+                        </span>
+                      ) : selectedBlock.imageUrl.startsWith('http://') || selectedBlock.imageUrl.startsWith('https://') ? (
+                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                          URL HTTPS Pública
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">warning</span>
+                          Imagem em Base64 Local
+                        </span>
+                      )
+                    )}
+                  </div>
+
+                  {/* Upload & Normalization Action Area */}
+                  <div className="flex flex-col sm:flex-row items-center gap-3 bg-indigo-50/60 p-3.5 rounded-xl border border-indigo-100">
+                    <button
+                      type="button"
+                      disabled={isNormalizing}
+                      onClick={() => imageFileInputRef.current?.click()}
+                      className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        {isNormalizing ? 'sync' : 'upload_file'}
+                      </span>
+                      <span>{isNormalizing ? 'Processando e Hospedando...' : 'Fazer Upload do Cabeçalho'}</span>
+                    </button>
+
+                    {selectedBlock.imageUrl && (
+                      <button
+                        type="button"
+                        disabled={isNormalizing}
+                        onClick={handleNormalizeExistingImage}
+                        className="w-full sm:w-auto px-3.5 py-2.5 bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs rounded-lg border border-indigo-200 shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                        title="Redimensiona e otimiza para 600px de largura"
+                      >
+                        <span className="material-symbols-outlined text-[16px] text-indigo-600">tune</span>
+                        <span>Otimizar para 600px</span>
+                      </button>
+                    )}
+
+                    <span className="text-xs text-indigo-900/80 font-medium text-center sm:text-left">
+                      Geramos automaticamente a URL pública HTTPS necessária para que o cabeçalho abra no Gmail/Outlook.
+                    </span>
+                  </div>
+
+                  {/* Base64 Warning */}
+                  {selectedBlock.imageUrl?.startsWith('data:') && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 space-y-2">
+                      <div className="flex items-start gap-2.5">
+                        <span className="material-symbols-outlined text-[20px] text-amber-600 shrink-0 mt-0.5">warning</span>
+                        <div className="text-xs text-amber-900 leading-relaxed">
+                          <p className="font-bold">Atenção ao usar Base64 no cabeçalho:</p>
+                          <p className="mt-0.5 text-amber-800">
+                            Provedores de e-mail bloqueiam imagens codificadas em Base64. Clique abaixo para gerar o link público HTTPS.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={isNormalizing}
+                        onClick={handleUploadExistingToPublicHost}
+                        className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">cloud_upload</span>
+                        <span>{isNormalizing ? 'Gerando URL pública...' : 'Hospedar em Link Público (Fixar para Gmail)'}</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Image Preview Box */}
+                  {selectedBlock.imageUrl && (
+                    <div className="bg-slate-100 border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-20 h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs relative">
+                          <img
+                            src={selectedBlock.imageUrl}
+                            alt={selectedBlock.imageAlt || 'Cabeçalho'}
+                            className="max-w-full max-h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
+                        <div className="min-w-0 text-xs">
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-slate-800 truncate">
+                              {selectedBlock.imageAlt || 'Cabeçalho do E-mail'}
+                            </p>
+                            <span className="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-bold">
+                              600px Largura
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 font-mono truncate max-w-xs md:max-w-md">
+                            {selectedBlock.imageUrl.length > 60
+                              ? `${selectedBlock.imageUrl.substring(0, 60)}...`
+                              : selectedBlock.imageUrl}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => updateSelectedBlock({ imageUrl: '' })}
+                          className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+                          title="Remover Imagem"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                          <span>Remover</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* URL input */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Ou digite/cole a URL da imagem de cabeçalho:
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedBlock.imageUrl || ''}
+                      onChange={(e) => updateSelectedBlock({ imageUrl: e.target.value })}
+                      placeholder="https://sua-empresa.com/cabecalho-600x200.jpg"
+                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Additional inputs */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Link ao Clicar no Cabeçalho (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedBlock.imageLink || ''}
+                      onChange={(e) => updateSelectedBlock({ imageLink: e.target.value })}
+                      placeholder="https://seusite.com"
+                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Texto Alternativo (Alt)</label>
+                    <input
+                      type="text"
+                      value={selectedBlock.imageAlt || ''}
+                      onChange={(e) => updateSelectedBlock({ imageAlt: e.target.value })}
+                      placeholder="Ex: Cabeçalho Estácio Taquara"
+                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Legenda Opcional</label>
+                    <input
+                      type="text"
+                      value={selectedBlock.imageCaption || ''}
+                      onChange={(e) => updateSelectedBlock({ imageCaption: e.target.value })}
+                      placeholder="Ex: Edição Especial de Agosto"
+                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -2201,33 +2622,6 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                 className="w-full h-[520px] border-0"
               />
             </div>
-          </div>
-        </div>
-
-        {/* Action Button Row */}
-        <div className="pt-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-slate-100">
-          <p className="text-xs text-slate-500 font-medium">
-            Pronto para testar seu layout montado? Escolha para onde deseja prosseguir:
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={handleApplyToEditor}
-              className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg shadow-xs transition-all active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider"
-            >
-              <span className="material-symbols-outlined text-[18px]">code</span>
-              <span>APLICAR NO EDITOR DE CÓDIGO</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleGoToVisualizacao}
-              className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-sm hover:shadow transition-all active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider"
-            >
-              <span className="material-symbols-outlined text-[18px]">visibility</span>
-              <span>IR PARA TELA DE VISUALIZAÇÃO</span>
-            </button>
           </div>
         </div>
 

@@ -7,7 +7,12 @@ export function generateEmailHtml(data: EmailData): string {
 
   const primary = data.primaryColor || '#002068';
 
-  return `<div style="font-family: 'Inter', Arial, sans-serif; background-color: #f7f9fc; padding: 40px 20px; text-align: center;">
+  return `<style>
+    img.emoji, img.CToW4e, img[src*="emoji"], img[src*="emoticons"], img[alt*="emoji"] {
+      width: 1.2em !important; height: 1.2em !important; max-width: 1.2em !important; max-height: 1.2em !important; display: inline-block !important; vertical-align: -0.2em !important; margin: 0 0.15em !important;
+    }
+  </style>
+  <div style="font-family: 'Inter', Arial, sans-serif; background-color: #f7f9fc; padding: 40px 20px; text-align: center;">
   <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 40px -10px rgba(0, 32, 104, 0.12); border: 1px solid #c4c5d5;">
     <div style="background-color: ${primary}; padding: 48px 24px; text-align: center;">
       <h1 style="color: #ffffff; font-family: 'Hanken Grotesk', sans-serif; font-size: 28px; margin: 0; font-weight: 700;">${escapeHtml(data.headerTitle)}</h1>

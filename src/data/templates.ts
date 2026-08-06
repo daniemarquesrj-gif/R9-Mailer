@@ -10,7 +10,7 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     greeting: 'Olá, {{nome}}!',
     buttonText: 'Agendar Demonstração',
     buttonUrl: 'https://exemplo.com',
-    bodyText: 'Esperamos que este e-mail lhe encontre bem na empresa {{empresa}}.\n\nTemos o prazer de apresentar uma oferta desenhada sob medida para as suas necessidades de negócios. Clique no botão abaixo para agendar uma demonstração gratuita conosco.',
+    bodyText: 'Esperamos que este e-mail lhe encontre bem em {{var1}}.\n\nTemos o prazer de apresentar uma oferta desenhada sob medida para as suas necessidades de negócios. Clique no botão abaixo para agendar uma demonstração gratuita conosco.',
     footerText: 'Você está recebendo este e-mail comercial enviado para {{email}}.\n© 2026 Minha Empresa S.A. Todos os direitos reservados.',
     primaryColor: '#4f46e5',
     customCodeHtml: `<!DOCTYPE html>
@@ -26,6 +26,10 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     .footer { background-color: #f1f5f9; padding: 16px 24px; text-align: center; font-size: 12px; color: #64748b; }
     .btn { display: inline-block; background-color: #4f46e5; color: #ffffff !important; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 16px; }
     h2 { color: #1e1b4b; margin-top: 0; }
+    img { max-width: 100%; height: auto; border: 0; outline: none; }
+    img.emoji, img.CToW4e, img[src*="emoji"], img[src*="emoticons"], img[alt*="emoji"] {
+      width: 1.2em !important; height: 1.2em !important; max-width: 1.2em !important; max-height: 1.2em !important; display: inline-block !important; vertical-align: -0.2em !important; margin: 0 0.15em !important;
+    }
     
     /* Regras de Visualização Responsiva Mobile */
     @media only screen and (max-width: 600px) {
@@ -44,7 +48,7 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     </div>
     <div class="content">
       <h2>Olá, {{nome}}!</h2>
-      <p>Esperamos que este e-mail lhe encontre bem na empresa <strong>{{empresa}}</strong>.</p>
+      <p>Esperamos que este e-mail lhe encontre bem em <strong>{{var1}}</strong>.</p>
       <p>Temos o prazer de apresentar uma oferta desenhada sob medida para as suas necessidades de negócios. Clique no botão abaixo para agendar uma demonstração gratuita conosco.</p>
       <div style="text-align: center;">
         <a href="https://exemplo.com" class="btn">Agendar Demonstração</a>
@@ -69,7 +73,7 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     greeting: 'Que bom ter você conosco, {{nome}}!',
     buttonText: 'Conhecer Meu Painel',
     buttonUrl: 'https://exemplo.com/comecar',
-    bodyText: 'Seu cadastro associado à empresa {{empresa}} foi ativado com sucesso em nossos servidores.\n\nEstamos muito entusiasmados em ajudar você e seu time a alcançar novos patamares de produtividade e segurança de entregas em tempo recorde.',
+    bodyText: 'Seu cadastro associado a {{var1}} foi ativado com sucesso em nossos servidores.\n\nEstamos muito entusiasmados em ajudar você e seu time a alcançar novos patamares de produtividade e segurança de entregas em tempo recorde.',
     footerText: 'Você está recebendo este e-mail como parte do seu cadastro corporativo para {{email}}.\n© 2026 Minha Empresa S.A. Todos os direitos reservados.',
     primaryColor: '#10b981',
     customCodeHtml: `<!DOCTYPE html>
@@ -104,7 +108,7 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     </div>
     <div class="content">
       <h2>Que bom ter você conosco, {{nome}}!</h2>
-      <p>Seu cadastro associado à empresa <strong>{{empresa}}</strong> foi ativado com sucesso em nossos servidores.</p>
+      <p>Seu cadastro associado a <strong>{{var1}}</strong> foi ativado com sucesso em nossos servidores.</p>
       <p>Estamos muito entusiasmados em ajudar você e seu time a alcançar novos patamares de produtividade e segurança de entregas em tempo recorde.</p>
       <div style="text-align: center;">
         <a href="https://exemplo.com/comecar" class="btn">Conhecer Meu Painel</a>
@@ -129,12 +133,12 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     description: 'Formato de leitura focado em conteúdo denso, notícias e curadoria de links.',
     badge: 'NEWSLETTER',
     image: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=600&q=80',
-    headerTitle: 'Informativo Semanal da {{empresa}}',
+    headerTitle: 'Informativo Semanal de {{var1}}',
     greeting: 'Olá, {{nome}}!',
     buttonText: 'Acessar Nosso Blog Completo',
     buttonUrl: 'https://exemplo.com/blog',
     bodyText: 'Preparamos uma curadoria de conteúdos e dicas especiais para acelerar os resultados de seu time nesta semana.',
-    footerText: 'Este informativo foi enviado para o e-mail cadastrado de {{nome}} ({{email}}).\nCaso não queira mais receber nossos boletins, clique aqui para sair.\n© 2026 {{empresa}}. Todos os direitos reservados.',
+    footerText: 'Este informativo foi enviado para o e-mail cadastrado de {{nome}} ({{email}}).\nCaso não queira mais receber nossos boletins, clique aqui para sair.\n© 2026 {{var1}}. Todos os direitos reservados.',
     primaryColor: '#3b82f6',
     customCodeHtml: `<!DOCTYPE html>
 <html>
@@ -166,7 +170,7 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
   <div class="card">
     <div class="header">
       <div class="badge">CONTEÚDO EXCLUSIVO</div>
-      <h1>Informativo Semanal da {{empresa}}</h1>
+      <h1>Informativo Semanal de {{var1}}</h1>
     </div>
     <div class="content">
       <p>Olá, {{nome}}! Preparamos uma curadoria de conteúdos e dicas especiais para acelerar os resultados de seu time nesta semana.</p>
@@ -190,7 +194,7 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     <div class="footer">
       Este informativo foi enviado para o e-mail cadastrado de {{nome}} ({{email}}).<br>
       Caso não queira mais receber nossos boletins, <a href="https://exemplo.com/descadastrar" style="color: #3b82f6; text-decoration: underline;">clique aqui para sair</a>.<br>
-      © 2026 {{empresa}}. Todos os direitos reservados.
+      © 2026 {{var1}}. Todos os direitos reservados.
     </div>
   </div>
 </body>
@@ -206,8 +210,8 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     greeting: 'Olá, {{nome}}! Desconto exclusivo para você.',
     buttonText: 'Ativar Desconto Agora',
     buttonUrl: 'https://exemplo.com/assinar',
-    bodyText: 'Temos uma excelente notícia! Como parceiro de destaque da empresa {{empresa}}, você acaba de ganhar um cupom especial de 35% de desconto em nossa assinatura anual.',
-    footerText: 'Promoção exclusiva enviada para {{email}}.\n© 2026 {{empresa}} S.A. Todos os direitos reservados.',
+    bodyText: 'Temos uma excelente notícia! Como parceiro de destaque de {{var1}}, você acaba de ganhar um cupom especial de 35% de desconto em nossa assinatura anual.',
+    footerText: 'Promoção exclusiva enviada para {{email}}.\n© 2026 {{var1}} S.A. Todos os direitos reservados.',
     primaryColor: '#f43f5e',
     customCodeHtml: `<!DOCTYPE html>
 <html>
@@ -243,13 +247,13 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     </div>
     <div class="content">
       <h2>Olá, {{nome}}! Desconto exclusivo para você.</h2>
-      <p>Temos uma excelente notícia! Como parceiro de destaque da empresa <strong>{{empresa}}</strong>, você acaba de ganhar um cupom especial de 35% de desconto em nossa assinatura anual.</p>
+      <p>Temos uma excelente notícia! Como parceiro de destaque de <strong>{{var1}}</strong>, você acaba de ganhar um cupom especial de 35% de desconto em nossa assinatura anual.</p>
       
       <div class="coupon">
         DESCONTO35OFF
       </div>
       
-      <p style="margin: 0 0 16px 0; font-size: 13px; color: #64748b;">*Válido por tempo limited. Aproveite para atualizar seu plano hoje!</p>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: #64748b;">*Válido por tempo limitado. Aproveite para atualizar seu plano hoje!</p>
       
       <div>
         <a href="https://exemplo.com/assinar" class="btn">Ativar Desconto Agora</a>
@@ -257,7 +261,7 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     </div>
     <div class="footer">
       Promoção exclusiva enviada para {{email}}.<br>
-      © 2026 {{empresa}} S.A. Todos os direitos reservados.
+      © 2026 {{var1}} S.A. Todos os direitos reservados.
     </div>
   </div>
 </body>

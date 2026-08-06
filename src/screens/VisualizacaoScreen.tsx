@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { EmailData, Screen, TransitionType } from '../types';
 import { generateEmailHtml } from '../utils/htmlGenerator';
-import { DEFAULT_TEMPLATES } from '../data/templates';
 
 interface VisualizacaoScreenProps {
   emailData: EmailData;
@@ -16,7 +15,6 @@ export const VisualizacaoScreen: React.FC<VisualizacaoScreenProps> = ({
 }) => {
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [readingMode, setReadingMode] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<string>(emailData.activeTemplateId || 'padrao');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const handleExportHtml = () => {
@@ -33,41 +31,6 @@ export const VisualizacaoScreen: React.FC<VisualizacaoScreenProps> = ({
 
     setToastMessage('✓ Arquivo HTML exportado e baixado com sucesso!');
     setTimeout(() => setToastMessage(null), 3500);
-  };
-
-  const handleBoasVindasClick = () => {
-    // Spec requirement: //button[contains(text(), 'BOAS-VINDAS')] -> Gerador Visual (push)
-    const tmpl = DEFAULT_TEMPLATES.find((t) => t.id === 'boas-vindas');
-    setEmailData((prev) => ({
-      ...prev,
-      headerTitle: tmpl?.headerTitle || 'Bem-vindo à nossa comunidade!',
-      greeting: tmpl?.greeting || 'Que bom ter você conosco, {{nome}}!',
-      buttonText: tmpl?.buttonText || 'Conhecer Meu Painel',
-      buttonUrl: tmpl?.buttonUrl || 'https://exemplo.com/comecar',
-      bodyText: tmpl?.bodyText || 'Seu cadastro associado à empresa {{empresa}} foi ativado...',
-      footerText: tmpl?.footerText || 'Você está recebendo este e-mail...',
-      primaryColor: tmpl?.primaryColor || '#10b981',
-      activeTemplateId: 'boas-vindas',
-      customCodeHtml: tmpl?.customCodeHtml,
-    }));
-    onNavigate('gerador_pro', 'push');
-  };
-
-  const handleSelectTemplate = (id: string, name: string, title: string, color: string) => {
-    setActiveTab(id);
-    const tmpl = DEFAULT_TEMPLATES.find((t) => t.id === id);
-    setEmailData((prev) => ({
-      ...prev,
-      activeTemplateId: id,
-      headerTitle: tmpl?.headerTitle || title,
-      greeting: tmpl?.greeting || prev.greeting,
-      buttonText: tmpl?.buttonText || prev.buttonText,
-      buttonUrl: tmpl?.buttonUrl || prev.buttonUrl,
-      bodyText: tmpl?.bodyText || prev.bodyText,
-      footerText: tmpl?.footerText || prev.footerText,
-      primaryColor: tmpl?.primaryColor || color,
-      customCodeHtml: tmpl?.customCodeHtml,
-    }));
   };
 
   return (
@@ -146,75 +109,6 @@ export const VisualizacaoScreen: React.FC<VisualizacaoScreenProps> = ({
             className="w-full h-[620px] min-h-[580px] border-0 bg-white"
           />
         </div>
-      </div>
-
-      {/* Template Selector (Bottom Bar) */}
-      <div className={`border-t px-4 md:px-6 py-3 overflow-x-auto flex gap-3 items-center h-20 shrink-0 ${
-        readingMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
-      }`}>
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden sm:block mr-2">
-          MODELOS:
-        </span>
-
-        {/* PADRÃO */}
-        <button
-          onClick={() => handleSelectTemplate('padrao', 'Padrão', 'Aviso Importante', '#2563eb')}
-          className={`min-w-[140px] sm:min-w-[160px] h-11 rounded-md flex items-center justify-center px-4 relative transition-all font-semibold text-xs uppercase ${
-            activeTab === 'padrao'
-              ? 'bg-blue-50 border-2 border-blue-600 text-blue-700 shadow-xs'
-              : 'bg-slate-50 border border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600'
-          }`}
-        >
-          <span>PADRÃO</span>
-          {activeTab === 'padrao' && (
-            <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full" />
-          )}
-        </button>
-
-        {/* BOAS-VINDAS - triggers push navigation to Gerador Visual as required by spec */}
-        <button
-          onClick={handleBoasVindasClick}
-          className={`min-w-[140px] sm:min-w-[160px] h-11 rounded-md flex items-center justify-center px-4 relative transition-all font-semibold text-xs uppercase ${
-            activeTab === 'boas-vindas'
-              ? 'bg-blue-50 border-2 border-blue-600 text-blue-700 shadow-xs'
-              : 'bg-slate-50 border border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600'
-          }`}
-        >
-          <span>BOAS-VINDAS</span>
-          {activeTab === 'boas-vindas' && (
-            <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full" />
-          )}
-        </button>
-
-        {/* NEWSLETTER */}
-        <button
-          onClick={() => handleSelectTemplate('newsletter', 'Newsletter', 'Boletim Informativo Estácio', '#0284c7')}
-          className={`min-w-[140px] sm:min-w-[160px] h-11 rounded-md flex items-center justify-center px-4 relative transition-all font-semibold text-xs uppercase ${
-            activeTab === 'newsletter'
-              ? 'bg-blue-50 border-2 border-blue-600 text-blue-700 shadow-xs'
-              : 'bg-slate-50 border border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600'
-          }`}
-        >
-          <span>NEWSLETTER</span>
-          {activeTab === 'newsletter' && (
-            <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full" />
-          )}
-        </button>
-
-        {/* OFERTA */}
-        <button
-          onClick={() => handleSelectTemplate('oferta', 'Oferta / Cupom', 'GARANTA SUA VAGA AGORA!', '#f59e0b')}
-          className={`min-w-[140px] sm:min-w-[160px] h-11 rounded-md flex items-center justify-center px-4 relative transition-all font-semibold text-xs uppercase ${
-            activeTab === 'oferta'
-              ? 'bg-blue-50 border-2 border-blue-600 text-blue-700 shadow-xs'
-              : 'bg-slate-50 border border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-600'
-          }`}
-        >
-          <span>OFERTA</span>
-          {activeTab === 'oferta' && (
-            <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full" />
-          )}
-        </button>
       </div>
     </div>
   );

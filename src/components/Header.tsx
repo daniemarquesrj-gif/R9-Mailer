@@ -13,7 +13,7 @@ export const Header: React.FC<HeaderProps> = ({ currentScreen, onNavigate, subti
       {/* Branding */}
       <div 
         className="flex items-center gap-3 cursor-pointer select-none"
-        onClick={() => onNavigate('editor', 'none')}
+        onClick={() => onNavigate('inicio', 'none')}
       >
         <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-xs shadow-xs">
           R9
@@ -33,8 +33,20 @@ export const Header: React.FC<HeaderProps> = ({ currentScreen, onNavigate, subti
       {/* Segmented Control Nav */}
       <nav className="flex items-center space-x-1 sm:space-x-2 bg-slate-100 p-1 rounded-lg border border-slate-200/80">
         <button
+          onClick={() => onNavigate('inicio', 'none')}
+          className={`px-2.5 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all flex items-center gap-1 ${
+            currentScreen === 'inicio'
+              ? 'bg-white text-blue-700 shadow-xs font-semibold'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[16px] hidden sm:inline">home</span>
+          <span>Início</span>
+        </button>
+
+        <button
           onClick={() => onNavigate('editor', 'none')}
-          className={`px-3 sm:px-5 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
+          className={`px-2.5 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
             currentScreen === 'editor'
               ? 'bg-white text-blue-700 shadow-xs font-semibold'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
@@ -45,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({ currentScreen, onNavigate, subti
 
         <button
           onClick={() => onNavigate('gerador_pro', 'none')}
-          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all flex items-center gap-1 ${
+          className={`px-2.5 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all flex items-center gap-1 ${
             currentScreen === 'gerador_pro'
               ? 'bg-white text-indigo-700 shadow-xs font-bold'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
@@ -59,7 +71,7 @@ export const Header: React.FC<HeaderProps> = ({ currentScreen, onNavigate, subti
 
         <button
           onClick={() => onNavigate('visualizacao', 'none')}
-          className={`px-3 sm:px-5 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
+          className={`px-2.5 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
             currentScreen === 'visualizacao'
               ? 'bg-white text-blue-700 shadow-xs font-semibold'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
@@ -69,16 +81,6 @@ export const Header: React.FC<HeaderProps> = ({ currentScreen, onNavigate, subti
         </button>
       </nav>
 
-      {/* Visualização Real CTA */}
-      <div className="flex items-center">
-        <button
-          onClick={() => onNavigate('visualizacao', 'none')}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-md text-xs sm:text-sm tracking-wide transition-all shadow-xs active:scale-95 flex items-center gap-1.5"
-        >
-          <span className="material-symbols-outlined text-[18px] hidden sm:inline">visibility</span>
-          <span>VISUALIZAÇÃO REAL</span>
-        </button>
-      </div>
     </header>
   );
 };

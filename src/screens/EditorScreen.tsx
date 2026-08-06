@@ -193,21 +193,38 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
           </span>
           <button
             onClick={() => insertVariable('{{nome}}')}
-            className="bg-blue-50 px-2.5 py-1 rounded border border-blue-200 text-xs font-mono text-blue-700 font-semibold hover:bg-blue-100 transition-colors"
+            className="bg-blue-50 px-2 py-1 rounded border border-blue-200 text-xs font-mono text-blue-700 font-semibold hover:bg-blue-100 transition-colors shrink-0"
+            title="Inserir {{nome}}"
           >
             &#123;&#123;nome&#125;&#125;
           </button>
           <button
-            onClick={() => insertVariable('{{empresa}}')}
-            className="bg-blue-50 px-2.5 py-1 rounded border border-blue-200 text-xs font-mono text-blue-700 font-semibold hover:bg-blue-100 transition-colors"
-          >
-            &#123;&#123;empresa&#125;&#125;
-          </button>
-          <button
             onClick={() => insertVariable('{{email}}')}
-            className="bg-blue-50 px-2.5 py-1 rounded border border-blue-200 text-xs font-mono text-blue-700 font-semibold hover:bg-blue-100 transition-colors"
+            className="bg-blue-50 px-2 py-1 rounded border border-blue-200 text-xs font-mono text-blue-700 font-semibold hover:bg-blue-100 transition-colors shrink-0"
+            title="Inserir {{email}}"
           >
             &#123;&#123;email&#125;&#125;
+          </button>
+          <button
+            onClick={() => insertVariable('{{var1}}')}
+            className="bg-blue-50 px-2 py-1 rounded border border-blue-200 text-xs font-mono text-blue-700 font-semibold hover:bg-blue-100 transition-colors shrink-0"
+            title="Inserir {{var1}}"
+          >
+            &#123;&#123;var1&#125;&#125;
+          </button>
+          <button
+            onClick={() => insertVariable('{{var2}}')}
+            className="bg-blue-50 px-2 py-1 rounded border border-blue-200 text-xs font-mono text-blue-700 font-semibold hover:bg-blue-100 transition-colors shrink-0"
+            title="Inserir {{var2}}"
+          >
+            &#123;&#123;var2&#125;&#125;
+          </button>
+          <button
+            onClick={() => insertVariable('{{var3}}')}
+            className="bg-blue-50 px-2 py-1 rounded border border-blue-200 text-xs font-mono text-blue-700 font-semibold hover:bg-blue-100 transition-colors shrink-0"
+            title="Inserir {{var3}}"
+          >
+            &#123;&#123;var3&#125;&#125;
           </button>
         </div>
 

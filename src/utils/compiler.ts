@@ -35,9 +35,24 @@ export function compileEmailToHtml(data: EmailData): string {
     /* Reset baseline */
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
-    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; max-width: 100%; }
     table { border-collapse: collapse !important; }
     body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    
+    /* Proteção de Emojis em Clientes de E-mail (Gmail / Outlook Web / Apple Mail) */
+    img.emoji, img.CToW4e, img[src*="emoji"], img[src*="emoticons"], img[alt*="emoji"], img[style*="width: 1em"], img[style*="height: 1em"] {
+      width: 1.2em !important;
+      height: 1.2em !important;
+      max-width: 1.2em !important;
+      max-height: 1.2em !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      display: inline-block !important;
+      vertical-align: -0.2em !important;
+      margin: 0 0.15em !important;
+      border: 0 !important;
+      outline: none !important;
+    }
     
     /* Responsive Styles */
     @media screen and (max-width: 600px) {

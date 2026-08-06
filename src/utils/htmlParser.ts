@@ -596,7 +596,37 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
     const fontFamily = styles['font-family'];
     const lineHeight = styles['line-height'];
 
-    // 1. HEADER / HEADER BANNER
+    // 1. HEADER IMAGE BANNER
+    const isHeaderImgNode = 
+      (node.className || '').includes('header-img') || 
+      (node.className || '').includes('email-header-img') ||
+      node.querySelector('img.email-header-img') !== null ||
+      (isHeaderElement(node, styles) && node.querySelector('img') !== null && !node.querySelector('h1, h2, h3'));
+
+    if (isHeaderImgNode) {
+      const img = node.tagName.toLowerCase() === 'img' ? (node as HTMLImageElement) : node.querySelector('img');
+      if (img) {
+        const src = img.getAttribute('src') || '';
+        const alt = img.getAttribute('alt') || 'Cabeçalho do E-mail';
+        const parentAnchor = img.closest('a');
+        const caption = img.nextElementSibling?.tagName.toLowerCase() === 'p' ? getTextWithLineBreaks(img.nextElementSibling) : undefined;
+
+        if (src) {
+          blocks.push({
+            id: createId(),
+            type: 'header_image',
+            imageUrl: src,
+            imageAlt: alt,
+            imageLink: parentAnchor?.getAttribute('href') || undefined,
+            imageCaption: caption,
+          });
+          markAllVisited(node);
+          return;
+        }
+      }
+    }
+
+    // 2. HEADER TEXT / TEXT BANNER
     if (isHeaderElement(node, styles)) {
       const h1 = node.querySelector('h1, h2, .title, .heading') || node;
       const subtitleEl = node.querySelector('p, h3, h4, .subtitle');

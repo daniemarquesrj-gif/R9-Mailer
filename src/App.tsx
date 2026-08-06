@@ -9,9 +9,10 @@ import { Footer } from './components/Footer';
 import { EditorScreen } from './screens/EditorScreen';
 import { VisualizacaoScreen } from './screens/VisualizacaoScreen';
 import { GeradorProScreen } from './screens/GeradorProScreen';
+import { InicioScreen } from './screens/InicioScreen';
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('editor');
+  const [currentScreen, setCurrentScreen] = useState<Screen>('inicio');
   const [transitionType, setTransitionType] = useState<TransitionType>('none');
 
   const defaultTmpl = DEFAULT_TEMPLATES[0];
@@ -58,6 +59,8 @@ export default function App() {
 
   const getSubtitle = () => {
     switch (currentScreen) {
+      case 'inicio':
+        return '/ inicio-guia.html';
       case 'editor':
         return '/ editor-de-codigo.html';
       case 'visualizacao':
@@ -90,6 +93,10 @@ export default function App() {
             transition={{ duration: transitionType === 'none' ? 0.15 : 0.35, ease: 'easeInOut' }}
             className="flex-grow flex flex-col w-full"
           >
+            {currentScreen === 'inicio' && (
+              <InicioScreen onNavigate={handleNavigate} />
+            )}
+
             {currentScreen === 'editor' && (
               <EditorScreen
                 emailData={emailData}
