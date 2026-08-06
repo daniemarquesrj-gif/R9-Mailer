@@ -189,9 +189,8 @@ function buildTextStyle(block: EmailBlock, defaultSize: number, defaultColor: st
   const transform = block.textTransform && block.textTransform !== 'none' ? `text-transform: ${block.textTransform};` : '';
   const fontFam = block.fontFamily ? `font-family: ${block.fontFamily};` : 'font-family: Helvetica, Arial, sans-serif;';
   const lHeight = block.lineHeight ? `line-height: ${block.lineHeight};` : 'line-height: 1.5;';
-  const bg = block.bgColor ? `background-color: ${block.bgColor};` : '';
 
-  return `color: ${color}; font-size: ${size}px; text-align: ${align}; ${bold} ${italic} ${decoStr} ${transform} ${fontFam} ${lHeight} ${bg}`;
+  return `color: ${color}; font-size: ${size}px; text-align: ${align}; ${bold} ${italic} ${decoStr} ${transform} ${fontFam} ${lHeight}`;
 }
 
 export function compileBlocksToHtml(blocks: EmailBlock[]): string {
@@ -201,7 +200,7 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
     switch (block.type) {
       case 'header_text':
       case 'header': {
-        const bg = block.headerBgColor || '#003bb3';
+        const bg = block.headerBgColor || block.bgColor || '#003bb3';
         const rawTitle = block.headerTitle || 'ESTÁCIO\nSUA MATRÍCULA\nCOMEÇA AQUI!';
         const formattedTitle = rawTitle.replace(/\n/g, '<br/>');
         const rawSubtitle = block.headerSubtitle;
@@ -231,6 +230,7 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         const alt = block.imageAlt || 'Cabeçalho do E-mail';
         const link = block.imageLink;
         const caption = block.imageCaption;
+        const bgStyle = block.bgColor ? `background-color: ${block.bgColor};` : '';
 
         let imgHtml = `<img src="${imgUrl}" alt="${alt}" class="email-header-img" width="100%" style="width: 100% !important; max-width: 100% !important; height: auto !important; display: block; border: 0; outline: none; margin: 0 auto; object-fit: cover;" />`;
         if (link) {
@@ -238,7 +238,7 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         }
 
         htmlContent += `
-    <div class="header-img-container" style="padding: 0; width: 100%; text-align: center; font-family: Helvetica, Arial, sans-serif; box-sizing: border-box; overflow: hidden;">
+    <div class="header-img-container" style="padding: 0; width: 100%; text-align: center; font-family: Helvetica, Arial, sans-serif; box-sizing: border-box; overflow: hidden; ${bgStyle}">
       ${imgHtml}
       ${caption ? `<p style="margin: 8px 0 0 0; font-size: 11px; color: #64748b; font-style: italic; padding: 0 16px;">${caption}</p>` : ''}
     </div>`;
@@ -249,9 +249,10 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         const align = block.alignment || 'left';
         const txt = block.text || 'Título do Bloco';
         const style = buildTextStyle(block, 28, '#1e1b4b', align);
+        const bgStyle = block.bgColor ? `background-color: ${block.bgColor};` : '';
 
         htmlContent += `
-    <div style="padding: 24px 28px 8px 28px; text-align: ${align};">
+    <div style="padding: 24px 28px 8px 28px; text-align: ${align}; ${bgStyle}">
       <h2 style="margin: 0; ${style}">${txt}</h2>
     </div>`;
         break;
@@ -261,9 +262,10 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         const align = block.alignment || 'left';
         const txt = block.text || 'Subtítulo complementar';
         const style = buildTextStyle(block, 18, '#475569', align);
+        const bgStyle = block.bgColor ? `background-color: ${block.bgColor};` : '';
 
         htmlContent += `
-    <div style="padding: 4px 28px 12px 28px; text-align: ${align};">
+    <div style="padding: 4px 28px 12px 28px; text-align: ${align}; ${bgStyle}">
       <p style="margin: 0; ${style}">${txt}</p>
     </div>`;
         break;
@@ -274,9 +276,10 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         const rawTxt = block.text || 'Insira aqui o texto do seu parágrafo...';
         const formattedTxt = rawTxt.replace(/\n/g, '<br/>');
         const style = buildTextStyle(block, 15, '#334155', align);
+        const bgStyle = block.bgColor ? `background-color: ${block.bgColor};` : '';
 
         htmlContent += `
-    <div style="padding: 12px 28px; text-align: ${align};">
+    <div style="padding: 12px 28px; text-align: ${align}; ${bgStyle}">
       <div style="${style}">${formattedTxt}</div>
     </div>`;
         break;
@@ -294,13 +297,14 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         const bold = block.isBold !== false ? 'font-weight: bold;' : 'font-weight: normal;';
         const italic = block.isItalic ? 'font-style: italic;' : '';
         const transform = block.textTransform ? `text-transform: ${block.textTransform};` : '';
+        const bgStyle = block.bgColor ? `background-color: ${block.bgColor};` : '';
 
         const btnStyle = isFull
           ? `display: block; width: 100%; box-sizing: border-box; text-align: center; background-color: ${bg}; color: ${color} !important; padding: 14px 20px; text-decoration: none; ${bold} ${italic} ${transform} border-radius: 8px; font-size: ${size}px; font-family: ${fontFam};`
           : `display: inline-block; background-color: ${bg}; color: ${color} !important; padding: 12px 28px; text-decoration: none; ${bold} ${italic} ${transform} border-radius: 8px; font-size: ${size}px; font-family: ${fontFam};`;
 
         htmlContent += `
-    <div style="padding: 20px 28px; text-align: ${align};">
+    <div style="padding: 20px 28px; text-align: ${align}; ${bgStyle}">
       <a href="${url}" class="btn" style="${btnStyle}">${label}</a>
     </div>`;
         break;
@@ -311,6 +315,7 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         const alt = block.imageAlt || 'Banner Promocional';
         const link = block.imageLink;
         const caption = block.imageCaption;
+        const bgStyle = block.bgColor ? `background-color: ${block.bgColor};` : '';
 
         let imgHtml = `<img src="${imgUrl}" alt="${alt}" class="email-banner-img" width="100%" style="width: 100% !important; max-width: 100% !important; height: auto !important; display: block; border: 0; outline: none; margin: 0 auto; border-radius: 6px; object-fit: contain;" />`;
         if (link) {
@@ -318,7 +323,7 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         }
 
         htmlContent += `
-    <div class="img-container" style="padding: 16px 28px; text-align: center; font-family: Helvetica, Arial, sans-serif; box-sizing: border-box; width: 100%;">
+    <div class="img-container" style="padding: 16px 28px; text-align: center; font-family: Helvetica, Arial, sans-serif; box-sizing: border-box; width: 100%; ${bgStyle}">
       ${imgHtml}
       ${caption ? `<p style="margin: 8px 0 0 0; font-size: 12px; color: #64748b; font-style: italic;">${caption}</p>` : ''}
     </div>`;
@@ -330,9 +335,10 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         const discount = block.couponDiscount || '20% OFF NA PRIMEIRA COMPRA';
         const bg = block.couponBgColor || '#f0fdf4';
         const border = block.couponBorderColor || '#16a34a';
+        const bgStyle = block.bgColor ? `background-color: ${block.bgColor};` : '';
 
         htmlContent += `
-    <div style="padding: 20px 28px; font-family: Helvetica, Arial, sans-serif;">
+    <div style="padding: 20px 28px; font-family: Helvetica, Arial, sans-serif; ${bgStyle}">
       <div style="background-color: ${bg}; border: 2px dashed ${border}; border-radius: 10px; padding: 20px; text-align: center;">
         <span style="display: block; font-size: 12px; font-weight: bold; color: ${border}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">${discount}</span>
         <div style="font-family: monospace; font-size: 22px; font-weight: bold; color: #0f172a; letter-spacing: 2px; padding: 6px 0;">
@@ -346,9 +352,10 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
       case 'divider': {
         const style = block.dividerStyle || 'solid';
         const color = block.dividerColor || '#e2e8f0';
+        const bgStyle = block.bgColor ? `background-color: ${block.bgColor};` : '';
 
         htmlContent += `
-    <div style="padding: 16px 28px;">
+    <div style="padding: 16px 28px; ${bgStyle}">
       <hr style="border: none; border-top: 1px ${style} ${color}; margin: 0;" />
     </div>`;
         break;
@@ -359,9 +366,10 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         const linkedin = block.linkedinUrl;
         const fb = block.facebookUrl;
         const web = block.websiteUrl;
+        const bgStyle = block.bgColor ? `background-color: ${block.bgColor};` : '';
 
         htmlContent += `
-    <div class="social-block" style="padding: 16px 28px; text-align: center; font-family: Helvetica, Arial, sans-serif;">
+    <div class="social-block" style="padding: 16px 28px; text-align: center; font-family: Helvetica, Arial, sans-serif; ${bgStyle}">
       <div style="display: inline-flex; gap: 16px; align-items: center; font-size: 13px; font-weight: bold;">
         ${insta ? `<a href="${insta}" style="color: #4f46e5; text-decoration: none;">Instagram</a>` : ''}
         ${linkedin ? `<a href="${linkedin}" style="color: #4f46e5; text-decoration: none;">LinkedIn</a>` : ''}
@@ -373,7 +381,7 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
       }
 
       case 'footer': {
-        const bg = block.footerBgColor || '#f8fafc';
+        const bg = block.footerBgColor || block.bgColor || '#f8fafc';
         const rawTxt = block.footerText || '© 2026 Minha Empresa. Todos os direitos reservados.';
         const formatted = rawTxt.replace(/\n/g, '<br/>');
         const style = buildTextStyle(
