@@ -37,7 +37,8 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
       .card { border-radius: 0 !important; border: none !important; width: 100% !important; }
       .header { padding: 24px 16px !important; }
       .content { padding: 24px 16px !important; }
-      .btn { display: block !important; width: 100% !important; text-align: center !important; padding: 14px 16px !important; box-sizing: border-box !important; font-size: 16px !important; }
+      .btn-full { display: block !important; width: 100% !important; text-align: center !important; padding: 14px 16px !important; box-sizing: border-box !important; font-size: 16px !important; }
+      .btn { max-width: 100% !important; box-sizing: border-box !important; }
     }
   </style>
 </head>
@@ -107,7 +108,8 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     @media only screen and (max-width: 600px) {
       body { padding: 8px !important; }
       .card { border-radius: 0 !important; border: none !important; width: 100% !important; }
-      .btn { display: block !important; width: 100% !important; text-align: center !important; padding: 14px 16px !important; box-sizing: border-box !important; font-size: 16px !important; }
+      .btn-full { display: block !important; width: 100% !important; text-align: center !important; padding: 14px 16px !important; box-sizing: border-box !important; font-size: 16px !important; }
+      .btn { max-width: 100% !important; box-sizing: border-box !important; }
       .img-container { padding: 12px 12px !important; }
       .img-container img { width: 100% !important; max-width: 100% !important; height: auto !important; }
     }
@@ -191,7 +193,8 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     @media only screen and (max-width: 600px) {
       body { padding: 8px !important; }
       .card { border-radius: 0 !important; border: none !important; width: 100% !important; }
-      .btn { display: block !important; width: 100% !important; text-align: center !important; padding: 14px 16px !important; box-sizing: border-box !important; font-size: 16px !important; }
+      .btn-full { display: block !important; width: 100% !important; text-align: center !important; padding: 14px 16px !important; box-sizing: border-box !important; font-size: 16px !important; }
+      .btn { max-width: 100% !important; box-sizing: border-box !important; }
       .img-container { padding: 12px 12px !important; }
       .img-container img { width: 100% !important; max-width: 100% !important; height: auto !important; }
     }
@@ -233,6 +236,93 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     </div>
     <div style="background-color: #1e1b4b; padding: 20px 24px; border-top: 1px solid #f1f5f9;">
       <div style="color: #64748b; font-size: 16px; text-align: left; font-weight: normal; font-style: normal; text-decoration: none;  font-family: Helvetica, Arial, sans-serif; line-height: 1.5; ">📍 Estácio R9 – Taquara<br/>Rua André Rocha, 838 – Taquara – Rio de Janeiro/RJ<br/>Esperamos você, Equipe Estácio.<br/>© 2026 Estácio. Todos os direitos reservados.</div>
+    </div>
+  </div>
+</body>
+</html>`,
+  },
+  {
+    id: 'documentacao',
+    name: 'Documentação',
+    description: 'Aviso de pendência na entrega de documentos com instruções de acesso ao portal do candidato.',
+    badge: 'DOCUMENTOS',
+    image: 'https://images.unsplash.com/photo-1568667256549-094345857637?auto=format&fit=crop&w=600&q=80',
+    headerTitle: 'SUA MATRÍCULA ESTÁ QUASE COMPLETA',
+    greeting: 'Olá, {{nome}}!',
+    buttonText: 'Fale conosco',
+    buttonUrl: '{{var1}}',
+    bodyText: 'Esperamos que este e-mail lhe encontre bem!\n\nEstou super ansioso para te conhecer e começar essa jornada com você! Porém, ao conferir a chamada, vi que ainda falta finalizar a entrega da sua documentação. Não queremos que você perca o início dessa nossa caminhada, certo?\n\nPara garantir seu lugar na turma, é só seguir este passo a passo:',
+    footerText: '© 2026 Estácio. Todos os direitos reservados.',
+    primaryColor: '#004acd',
+    customCodeHtml: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #334155; margin: 0; padding: 20px; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    .card { background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; max-width: 600px; margin: 0 auto; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    a { color: #4f46e5; }
+    img { max-width: 100%; height: auto; border: 0; outline: none; -ms-interpolation-mode: bicubic; }
+    .img-container img, img.email-banner-img { width: 100% !important; max-width: 100% !important; height: auto !important; display: block; object-fit: contain; }
+    .img-container { width: 100% !important; box-sizing: border-box !important; }
+
+    /* Proteção para Emojis em Clientes de E-mail (Outlook, Gmail Web, Apple Mail) */
+    img.emoji, img.CToW4e, img[src*="emoji"], img[src*="emoticons"], img[alt*="emoji"], img[style*="width: 1em"], img[style*="height: 1em"] {
+      width: 1.2em !important;
+      height: 1.2em !important;
+      max-width: 1.2em !important;
+      max-height: 1.2em !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      display: inline-block !important;
+      vertical-align: -0.2em !important;
+      margin: 0 0.15em !important;
+      border: 0 !important;
+      outline: none !important;
+      object-fit: contain !important;
+    }
+    @media only screen and (max-width: 600px) {
+      body { padding: 8px !important; }
+      .card { border-radius: 0 !important; border: none !important; width: 100% !important; }
+      .btn-full { display: block !important; width: 100% !important; text-align: center !important; padding: 14px 16px !important; box-sizing: border-box !important; font-size: 16px !important; }
+      .btn-auto { display: inline-block !important; width: auto !important; max-width: 100% !important; box-sizing: border-box !important; }
+      .btn { max-width: 100% !important; box-sizing: border-box !important; }
+      .img-container { padding: 12px 12px !important; }
+      .img-container img { width: 100% !important; max-width: 100% !important; height: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    
+    <div class="header-img-container" style="padding: 0; width: 100%; text-align: center; font-family: Helvetica, Arial, sans-serif; box-sizing: border-box; overflow: hidden; ">
+      <img src="https://firebasestorage.googleapis.com/v0/b/gen-lang-client-0292381296.firebasestorage.app/o/emails%2F1786558902822_xy0llq_HEADER_02_3_png.png?alt=media&token=48a4360a-fa84-4d29-a651-4dbb72d41536" alt="Imagem de Cabeçalho do E-mail" class="email-header-img" width="100%" style="width: 100% !important; max-width: 100% !important; height: auto !important; display: block; border: 0; outline: none; margin: 0 auto; object-fit: cover;" />
+      
+    </div>
+    <div style="padding: 4px 28px 12px 28px; text-align: center; background-color: #004acd;">
+      <p style="margin: 0; color: #ffffff; font-size: 18px; text-align: center; font-weight: bold; font-style: normal; text-decoration: none;  font-family: Helvetica, Arial, sans-serif; line-height: 1.5;">SUA MATRÍCULA ESTÁ QUASE COMPLETA</p>
+    </div>
+    <div style="padding: 24px 28px 8px 28px; text-align: left; ">
+      <h2 style="margin: 0; color: #1e1b4b; font-size: 16px; text-align: left; font-weight: bold; font-style: normal; text-decoration: none;  font-family: Helvetica, Arial, sans-serif; line-height: 1.5;">Olá,  {{nome}}!</h2>
+    </div>
+    <div style="padding: 12px 28px; text-align: left; ">
+      <div style="color: #334155; font-size: 16px; text-align: left; font-weight: normal; font-style: normal; text-decoration: none;  font-family: Helvetica, Arial, sans-serif; line-height: 1.5;">Esperamos que este e-mail lhe encontre bem!<br/><br/>Estou super ansioso para te conhecer e começar essa jornada com você! Porém, ao conferir a chamada, vi que ainda falta finalizar a entrega da sua documentação. Não queremos que você perca o início dessa nossa caminhada, certo?<br/><br/>Para garantir seu lugar na turma, é só seguir este passo a passo:</div>
+    </div>
+    <div style="padding: 12px 28px; text-align: left; ">
+      <div style="color: #334155; font-size: 16px; text-align: left; font-weight: normal; font-style: normal; text-decoration: none;  font-family: Helvetica, Arial, sans-serif; line-height: 1.5;">1- Acesse o portal do candidato -  <a href="https://candidatos.portal.estacio.br/acompanhe-sua-matricula" target="_blank" style="color: #4f46e5; text-decoration: underline;">Ir para o portal do candidato</a> <br/>2- Faça login com seu CPF e senha.<br/>3- Localize o campo 'Enviar Documentos' ou 'Pendências Documentais'.<br/>4-Tire uma foto clara ou digitalize os documentos solicitados e faça o envio pelo sistema.<br/><br/>Pronto! Assim que eu receber o aviso aqui, já poderei te dar as boas-vindas oficiais.<br/><br/>Estou te esperando ansiosamente para começarmos! Qualquer dúvida, é só chamar o consultor comercial abaixo para agilizar.</div>
+    </div>
+    <div style="padding: 20px 28px; text-align: center; ">
+      <a href="{{var1}}" class="btn btn-auto" style="display: inline-block; background-color: #4f46e5; color: #ffffff !important; padding: 12px 28px; text-decoration: none; font-weight: bold;   border-radius: 8px; font-size: 16px; font-family: Helvetica, Arial, sans-serif;">Fale conosco</a>
+    </div>
+    <div style="padding: 12px 28px; text-align: left; ">
+      <div style="color: #334155; font-size: 16px; text-align: left; font-weight: normal; font-style: normal; text-decoration: none;  font-family: Helvetica, Arial, sans-serif; line-height: 1.5;">Atenciosamente,<br/>Equipe Comercial Estácio.</div>
+    </div>
+    <div style="padding: 12px 28px; text-align: left; ">
+      <div style="color: #334155; font-size: 15px; text-align: left; font-weight: normal; font-style: normal; text-decoration: none;  font-family: Helvetica, Arial, sans-serif; line-height: 1.6;"><span style="font-size: 12px;"><i>Caso já esteja com a sua documentação completa, favor desconsiderar o email.</i></span></div>
+    </div>
+    <div style="background-color: #1e1b4b; padding: 20px 24px; border-top: 1px solid #f1f5f9;">
+      <div style="color: #64748b; font-size: 16px; text-align: left; font-weight: normal; font-style: normal; text-decoration: none;  font-family: Helvetica, Arial, sans-serif; line-height: 1.5;">© 2026 Estácio. Todos os direitos reservados.</div>
     </div>
   </div>
 </body>

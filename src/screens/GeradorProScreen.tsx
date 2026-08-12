@@ -140,7 +140,7 @@ const DEFAULT_BLOCKS: EmailBlock[] = [
     buttonUrl: 'https://exemplo.com/plataforma',
     buttonBgColor: '#4f46e5',
     buttonTextColor: '#ffffff',
-    buttonWidth: 'full',
+    buttonWidth: 'auto',
     alignment: 'center',
     fontSizePx: 16,
     isBold: true,
@@ -305,7 +305,7 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
 
         htmlContent += `
     <div style="padding: 20px 28px; text-align: ${align}; ${bgStyle}">
-      <a href="${url}" class="btn" style="${btnStyle}">${label}</a>
+      <a href="${url}" class="${isFull ? 'btn btn-full' : 'btn btn-auto'}" style="${btnStyle}">${label}</a>
     </div>`;
         break;
       }
@@ -431,7 +431,9 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
     @media only screen and (max-width: 600px) {
       body { padding: 8px !important; }
       .card { border-radius: 0 !important; border: none !important; width: 100% !important; }
-      .btn { display: block !important; width: 100% !important; text-align: center !important; padding: 14px 16px !important; box-sizing: border-box !important; font-size: 16px !important; }
+      .btn-full { display: block !important; width: 100% !important; text-align: center !important; padding: 14px 16px !important; box-sizing: border-box !important; font-size: 16px !important; }
+      .btn-auto { display: inline-block !important; width: auto !important; max-width: 100% !important; box-sizing: border-box !important; }
+      .btn { max-width: 100% !important; box-sizing: border-box !important; }
       .img-container { padding: 12px 12px !important; }
       .img-container img { width: 100% !important; max-width: 100% !important; height: auto !important; }
     }
@@ -1740,10 +1742,10 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                 >
                   <span className="material-symbols-outlined text-[18px]">
                     {tmpl.id === 'padrao' && 'description'}
-                    {tmpl.id === 'boas-vindas' && 'handshake'}
-                    {tmpl.id === 'newsletter' && 'newspaper'}
-                    {tmpl.id === 'oferta' && 'local_offer'}
-                    {tmpl.id === 'pesquisa' && 'quiz'}
+                    {tmpl.id === 'estacio-matricula' && 'local_offer'}
+                    {tmpl.id === 'estacio-boleto' && 'receipt_long'}
+                    {tmpl.id === 'documentacao' && 'folder_shared'}
+                    {!['padrao', 'estacio-matricula', 'estacio-boleto', 'documentacao'].includes(tmpl.id) && 'draft'}
                   </span>
                   <span>{tmpl.name}</span>
                   {isActive && (
@@ -2479,14 +2481,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Largura no Mobile</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Formato e Largura do Botão</label>
                     <select
-                      value={selectedBlock.buttonWidth || 'full'}
+                      value={selectedBlock.buttonWidth || 'auto'}
                       onChange={(e) => updateSelectedBlock({ buttonWidth: e.target.value as any })}
                       className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white"
                     >
-                      <option value="full">100% da Largura (Recomendado)</option>
-                      <option value="auto">Largura Automática</option>
+                      <option value="auto">Arredondado Centralizado (Padrão CTA)</option>
+                      <option value="full">100% da Largura (Preencher Bloco Inteiro)</option>
                     </select>
                   </div>
                 </div>

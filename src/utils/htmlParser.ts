@@ -20,6 +20,12 @@ function parseStylesAndAttrs(node: Element): Record<string, string> {
     });
   }
 
+  // Handle shorthand background property
+  if (!styles['background-color'] && styles['background']) {
+    const bgCol = parseColorFromStyle(styles['background']);
+    if (bgCol) styles['background-color'] = bgCol;
+  }
+
   // 2. Read legacy HTML presentation attributes as fallbacks
   if (!styles['text-align'] && node.getAttribute('align')) {
     styles['text-align'] = node.getAttribute('align')!.toLowerCase();
@@ -46,7 +52,7 @@ function parseStylesAndAttrs(node: Element): Record<string, string> {
 function parseColorFromStyle(val?: string): string | undefined {
   if (!val) return undefined;
   val = val.trim();
-  if (val === 'transparent' || val === 'inherit' || val === 'initial') return undefined;
+  if (val === 'transparent' || val === 'inherit' || val === 'initial' || val === 'none') return undefined;
 
   // Match hex color like #ffffff or #fff or #4f46e5
   const hexMatch = val.match(/#(?:[0-9a-fA-F]{3}){1,2}\b/);
@@ -67,6 +73,130 @@ function parseColorFromStyle(val?: string): string | undefined {
     if (namedColors.includes(w)) return w;
   }
 
+  return undefined;
+}
+
+/**
+ * Walks up DOM hierarchy from node to rootContainer to find inherited background color
+ */
+function getInheritedBgColor(node: Element, rootContainer?: Element): string | undefined {
+  let curr: Element | null = node;
+  while (curr && curr !== document.documentElement) {
+    const styles = parseStylesAndAttrs(curr);
+    const bg = parseColor(styles['background-color'] || styles['background']);
+    if (bg && bg !== 'transparent' && bg !== 'inherit' && bg !== 'none') {
+      return bg;
+    }
+    if (rootContainer && curr === rootContainer) break;
+    curr = curr.parentElement;
+  }
+  return undefined;
+}
+
+/**
+ * Walks up DOM hierarchy to find inherited text color
+ */
+function getInheritedTextColor(node: Element, rootContainer?: Element): string | undefined {
+  let curr: Element | null = node;
+  while (curr && curr !== document.documentElement) {
+    const styles = parseStylesAndAttrs(curr);
+    const color = parseColor(styles['color']);
+    if (color && color !== 'inherit' && color !== 'initial') {
+      return color;
+    }
+    if (rootContainer && curr === rootContainer) break;
+    curr = curr.parentElement;
+  }
+  return undefined;
+}
+
+/**
+ * Inspects inner children (span, font, b, strong) for explicit text color overrides.
+ * STRICTLY EXCLUDES <a> tags to prevent link colors from turning paragraph text blue!
+ */
+function getInnerTextColor(node: Element): string | undefined {
+  // Check inline text formatting elements ONLY (excluding <a> tags)
+  const inlineTags = Array.from(
+    node.querySelectorAll('span[style*="color"], font[color], font[style*="color"], b[style*="color"], strong[style*="color"]')
+  ).filter((el) => el.tagName.toLowerCase() !== 'a' && !el.closest('a'));
+
+  for (const child of inlineTags) {
+    const styles = parseStylesAndAttrs(child);
+    const c = parseColor(styles['color']);
+    if (c) return c;
+  }
+
+  // Check inner paragraph / headings if present
+  const blockTags = Array.from(node.querySelectorAll('p[style*="color"], h1[style*="color"], h2[style*="color"], h3[style*="color"]'));
+  for (const child of blockTags) {
+    const styles = parseStylesAndAttrs(child);
+    const c = parseColor(styles['color']);
+    if (c) return c;
+  }
+
+  return undefined;
+}
+
+/**
+ * Walks up DOM hierarchy to find inherited font family
+ */
+function getInheritedFontFamily(node: Element, rootContainer?: Element): string | undefined {
+  let curr: Element | null = node;
+  while (curr && curr !== document.documentElement) {
+    const styles = parseStylesAndAttrs(curr);
+    if (styles['font-family']) {
+      return cleanFontFamily(styles['font-family']);
+    }
+    if (rootContainer && curr === rootContainer) break;
+    curr = curr.parentElement;
+  }
+  return undefined;
+}
+
+/**
+ * Cleans up font family string
+ */
+function cleanFontFamily(ff?: string): string | undefined {
+  if (!ff) return undefined;
+  const cleaned = ff.trim().replace(/^['"]|['"]$/g, '');
+  if (!cleaned || cleaned.toLowerCase() === 'inherit' || cleaned.toLowerCase() === 'initial') {
+    return undefined;
+  }
+  return cleaned;
+}
+
+/**
+ * Extracts default font-family from document <style> tags if present
+ */
+function extractDefaultFontFamilyFromDoc(doc: Document): string | undefined {
+  const styles = doc.querySelectorAll('style');
+  for (const style of styles) {
+    const content = style.textContent || '';
+    const match = content.match(/font-family\s*:\s*([^;}]+)/i);
+    if (match && match[1]) {
+      const ff = cleanFontFamily(match[1]);
+      if (ff && !ff.includes('FontAwesome') && !ff.includes('lucide') && !ff.includes('Material')) {
+        return ff;
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Walks up DOM hierarchy to find inherited text alignment
+ */
+function getInheritedTextAlign(node: Element, rootContainer?: Element): 'left' | 'center' | 'right' | 'justify' | undefined {
+  let curr: Element | null = node;
+  while (curr && curr !== document.documentElement) {
+    const styles = parseStylesAndAttrs(curr);
+    const align = styles['text-align'];
+    if (align && ['left', 'center', 'right', 'justify'].includes(align.toLowerCase())) {
+      return align.toLowerCase() as any;
+    }
+    if (rootContainer && curr === rootContainer) break;
+    curr = curr.parentElement;
+  }
   return undefined;
 }
 
@@ -119,7 +249,6 @@ function ensureButtonTextColor(bgColor?: string, textColor?: string): string {
   const bg = parseColor(bgColor) || '#4f46e5';
   const text = parseColor(textColor);
 
-  // If text color is identical or nearly identical to background color, fix it!
   if (text && text.toLowerCase() === bg.toLowerCase()) {
     return isDarkColor(bg) ? '#ffffff' : '#0f172a';
   }
@@ -127,7 +256,6 @@ function ensureButtonTextColor(bgColor?: string, textColor?: string): string {
   if (text) {
     const isBgDark = isDarkColor(bg);
     const isTextDark = isDarkColor(text);
-    // If both are dark or both are light, override text color for contrast
     if (isBgDark === isTextDark) {
       return isBgDark ? '#ffffff' : '#0f172a';
     }
@@ -158,10 +286,11 @@ function getTextWithLineBreaks(node: Element): string {
 }
 
 /**
- * Extracts text from an element while preserving <a> links if present.
+ * Extracts text from an element while preserving <a>, <b>, <span>, <font>, and formatting tags if present.
  */
 function getTextWithFormattedHtml(node: Element): string {
-  if (node.querySelector('a')) {
+  const hasFormattingChildren = node.querySelector('a, b, strong, i, em, u, s, strike, span, font, sub, sup, mark, br');
+  if (hasFormattingChildren) {
     const clone = node.cloneNode(true) as Element;
     clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
     return clone.innerHTML.trim();
@@ -170,11 +299,12 @@ function getTextWithFormattedHtml(node: Element): string {
 }
 
 /**
- * Checks if a node is a button element (<a> or <button> or button wrapper)
+ * Checks if a node is a standalone button element (<a> or <button> or button wrapper)
+ * Crucial: Regular text links inside paragraphs are NOT standalone buttons!
  */
 function isButtonElement(node: Element, styles: Record<string, string>): boolean {
   const tagName = node.tagName.toLowerCase();
-  const classList = node.className || '';
+  const classList = (node.className || '').toString().toLowerCase();
 
   // If node contains an image and no text, it's an image link, not a text button
   if (node.querySelector('img') && (!node.textContent || node.textContent.trim().length === 0)) {
@@ -186,31 +316,55 @@ function isButtonElement(node: Element, styles: Record<string, string>): boolean
   if (tagName === 'a') {
     // Exclude social links from button classification
     const href = (node.getAttribute('href') || '').toLowerCase();
-    if (href.includes('instagram') || href.includes('linkedin') || href.includes('facebook') || href.includes('twitter') || href.includes('youtube')) {
+    if (href.includes('instagram') || href.includes('linkedin') || href.includes('facebook') || href.includes('twitter') || href.includes('youtube') || href.includes('wa.me')) {
       return false;
     }
 
     // Check if class explicitly suggests a button
     if (classList.includes('btn') || classList.includes('button') || classList.includes('cta') || classList.includes('action')) return true;
 
-    // Check if the anchor itself has an explicit background color (not transparent/none)
+    // Check if anchor has explicit background color (not transparent/none)
     const bgColor = styles['background-color'] || styles['background'];
     if (bgColor && bgColor !== 'transparent' && bgColor !== 'inherit' && bgColor !== 'none') {
-      return true;
+      // Check that it is a short CTA text, not a long paragraph inside an anchor
+      const label = (node.textContent || '').trim();
+      if (label.length > 0 && label.length < 80) {
+        return true;
+      }
     }
 
     // Check if anchor has padding/border-radius with block or inline-block display
-    if (styles['padding'] || styles['border-radius'] || styles['border']) {
+    if (styles['padding'] || styles['border-radius']) {
       if (styles['display'] === 'block' || styles['display'] === 'inline-block') {
-        return true;
+        const label = (node.textContent || '').trim();
+        if (label.length > 0 && label.length < 80) {
+          return true;
+        }
       }
     }
 
     const parent = node.parentElement;
     if (parent) {
-      const parentClass = parent.className || '';
+      const parentClass = (parent.className || '').toString().toLowerCase();
       if (parentClass.includes('btn') || parentClass.includes('button') || parentClass.includes('cta')) {
         return true;
+      }
+    }
+  }
+
+  // Check if node is a wrapper (div, td, table) explicitly meant as a button container
+  if (['div', 'td', 'table'].includes(tagName)) {
+    const hasChildAnchor = node.querySelector('a, button');
+    if (hasChildAnchor) {
+      const label = (hasChildAnchor.textContent || '').trim();
+      if (label.length > 0 && label.length < 80) {
+        if (classList.includes('btn') || classList.includes('button') || classList.includes('cta')) {
+          return true;
+        }
+        const bgColor = styles['background-color'] || styles['background'];
+        if (bgColor && bgColor !== 'transparent' && bgColor !== 'inherit' && bgColor !== 'none' && (styles['padding'] || styles['border-radius'])) {
+          return true;
+        }
       }
     }
   }
@@ -223,7 +377,7 @@ function isButtonElement(node: Element, styles: Record<string, string>): boolean
  */
 function isTitleElement(node: Element, styles: Record<string, string>): boolean {
   const tagName = node.tagName.toLowerCase();
-  const classList = node.className || '';
+  const classList = (node.className || '').toString().toLowerCase();
 
   if (tagName === 'h1' || tagName === 'h2') return true;
   if (classList.includes('title') || classList.includes('heading') || classList.includes('titulo')) return true;
@@ -246,7 +400,7 @@ function isTitleElement(node: Element, styles: Record<string, string>): boolean 
  */
 function isSubtitleElement(node: Element, styles: Record<string, string>): boolean {
   const tagName = node.tagName.toLowerCase();
-  const classList = node.className || '';
+  const classList = (node.className || '').toString().toLowerCase();
 
   if (tagName === 'h3' || tagName === 'h4' || tagName === 'h5' || tagName === 'h6') return true;
   if (classList.includes('subtitle') || classList.includes('subtitulo')) return true;
@@ -262,7 +416,7 @@ function isSubtitleElement(node: Element, styles: Record<string, string>): boole
  */
 function isHeaderElement(node: Element, styles: Record<string, string>): boolean {
   const tagName = node.tagName.toLowerCase();
-  const classList = node.className || '';
+  const classList = (node.className || '').toString().toLowerCase();
 
   if (tagName === 'header') return true;
   if (classList.includes('header') || classList.includes('banner') || classList.includes('cabecalho') || classList.includes('topo')) return true;
@@ -280,7 +434,7 @@ function isHeaderElement(node: Element, styles: Record<string, string>): boolean
  */
 function isFooterElement(node: Element, styles: Record<string, string>): boolean {
   const tagName = node.tagName.toLowerCase();
-  const classList = node.className || '';
+  const classList = (node.className || '').toString().toLowerCase();
 
   if (tagName === 'footer') return true;
   if (classList.includes('footer') || classList.includes('rodape') || classList.includes('rodapé')) return true;
@@ -304,7 +458,7 @@ function isFooterElement(node: Element, styles: Record<string, string>): boolean
  * Checks if a node is a coupon element
  */
 function isCouponElement(node: Element, styles: Record<string, string>): boolean {
-  const classList = node.className || '';
+  const classList = (node.className || '').toString().toLowerCase();
   if (classList.includes('coupon') || classList.includes('cupom') || classList.includes('voucher')) return true;
 
   const border = styles['border'] || styles['border-style'] || styles['border-top-style'] || '';
@@ -338,8 +492,8 @@ const BLOCK_TAGS = new Set([
  * Checks if a node is or contains a social media block
  */
 function isSocialElement(node: Element, _styles?: Record<string, string>): boolean {
-  const classList = (node.className || '').toLowerCase();
-  const id = (node.id || '').toLowerCase();
+  const classList = (node.className || '').toString().toLowerCase();
+  const id = (node.id || '').toString().toLowerCase();
   if (classList.includes('social') || id.includes('social') || classList.includes('redes')) return true;
 
   const anchors = Array.from(node.querySelectorAll('a'));
@@ -412,7 +566,7 @@ function hasBlockChildren(node: Element, styles: Record<string, string>): boolea
   if (node.querySelector('hr')) return true;
   if (isSocialElement(node, styles)) return true;
 
-  // Check if contains a button
+  // Check if node contains a standalone CTA button
   const anchors = Array.from(node.querySelectorAll('a, button'));
   for (const a of anchors) {
     const aStyles = parseStylesAndAttrs(a);
@@ -579,6 +733,8 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
   // Find primary email container or body
   const rootContainer = doc.querySelector('.card') || doc.querySelector('table') || doc.body;
 
+  const defaultDocFontFamily = extractDefaultFontFamilyFromDoc(doc) || 'Helvetica, Arial, sans-serif';
+
   // Set of visited nodes to avoid duplicate block generation
   const visitedNodes = new Set<Element>();
 
@@ -600,18 +756,21 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
     const styles = parseStylesAndAttrs(node);
 
     const fontSizePx = parsePxSize(styles['font-size']);
-    const textColor = parseColor(styles['color']);
-    const bgColor = parseColor(styles['background-color']);
-    const alignment = (styles['text-align'] as any) || 'left';
-    const isBold = styles['font-weight'] === 'bold' || parseInt(styles['font-weight'] || '400', 10) >= 600 || tagName === 'b' || tagName === 'strong';
-    const isItalic = styles['font-style'] === 'italic' || tagName === 'i' || tagName === 'em';
-    const fontFamily = styles['font-family'];
+    // 1. Direct color on current node
+    // 2. Inner formatting text color (e.g. span style="color: #fff") -> EXCLUDES <a> tags!
+    // 3. Inherited color from parent DOM hierarchy
+    const textColor = parseColor(styles['color']) || getInnerTextColor(node) || getInheritedTextColor(node, rootContainer) || '#334155';
+    const bgColor = parseColor(styles['background-color'] || styles['background']) || getInheritedBgColor(node, rootContainer);
+    const alignment = (styles['text-align'] as any) || getInheritedTextAlign(node, rootContainer) || 'left';
+    const isBold = styles['font-weight'] === 'bold' || parseInt(styles['font-weight'] || '400', 10) >= 600 || tagName === 'b' || tagName === 'strong' || node.querySelector('b, strong') !== null;
+    const isItalic = styles['font-style'] === 'italic' || tagName === 'i' || tagName === 'em' || node.querySelector('i, em') !== null;
+    const fontFamily = styles['font-family'] ? cleanFontFamily(styles['font-family']) : (getInheritedFontFamily(node, rootContainer) || defaultDocFontFamily);
     const lineHeight = styles['line-height'];
 
     // 1. HEADER IMAGE BANNER
     const isHeaderImgNode = 
-      (node.className || '').includes('header-img') || 
-      (node.className || '').includes('email-header-img') ||
+      (node.className || '').toString().includes('header-img') || 
+      (node.className || '').toString().includes('email-header-img') ||
       node.querySelector('img.email-header-img') !== null ||
       (isHeaderElement(node, styles) && node.querySelector('img') !== null && !node.querySelector('h1, h2, h3'));
 
@@ -631,6 +790,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
             imageAlt: alt,
             imageLink: parentAnchor?.getAttribute('href') || undefined,
             imageCaption: caption,
+            bgColor: bgColor,
           });
           markAllVisited(node);
           return;
@@ -648,7 +808,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
 
       const headerStyles = parseStylesAndAttrs(h1);
       const headerBg = bgColor || parseColor(styles['background-color']) || '#003bb3';
-      const headerTextColor = parseColor(headerStyles['color']) || textColor || '#ffffff';
+      const headerTextColor = parseColor(headerStyles['color']) || (textColor !== '#334155' ? textColor : undefined) || '#ffffff';
 
       blocks.push({
         id: createId(),
@@ -675,7 +835,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
         type: 'footer',
         footerText: footerText || '© 2026 Minha Empresa. Todos os direitos reservados.',
         footerBgColor: bgColor || '#f8fafc',
-        footerTextColor: textColor || '#64748b',
+        footerTextColor: parseColor(styles['color']) || (textColor !== '#334155' ? textColor : undefined) || '#64748b',
         fontSizePx: fontSizePx || 12,
         alignment: (alignment as any) || 'center',
       });
@@ -746,13 +906,14 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
           imageAlt: alt,
           imageLink: parentAnchor?.getAttribute('href') || undefined,
           imageCaption: caption,
+          bgColor,
         });
         markAllVisited(node);
         return;
       }
     }
 
-    // 7. BUTTON / CTA
+    // 7. STANDALONE BUTTON / CTA
     if (isButtonElement(node, styles)) {
       const anchor = tagName === 'a' || tagName === 'button' ? node : node.querySelector('a, button') || node;
       const label = getTextWithLineBreaks(anchor) || 'Clique Aqui';
@@ -769,20 +930,28 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
 
       // Look for button text color on anchor or child span/b
       let rawTextColor = parseColor(anchorStyles['color']) || parseColor(styles['color']);
-      const childSpan = anchor.querySelector('span, font, b, strong');
-      if (childSpan) {
-        const spanColor = parseColor(parseStylesAndAttrs(childSpan)['color']);
-        if (spanColor) rawTextColor = spanColor;
-      }
 
       // Ensure high contrast text color (never invisible!)
       const btnColor = ensureButtonTextColor(btnBg, rawTextColor);
-      const btnWidth = (styles['width'] === '100%' || anchorStyles['width'] === '100%' || styles['display'] === 'block') ? 'full' : 'auto';
+
+      // Button width: Default to 'auto' (centered pill button)
+      // Never force full width during import, so buttons retain their rounded pill formatting
+      const btnWidth: 'full' | 'auto' = 'auto';
 
       let btnAlign = alignment;
       if (node.parentElement) {
         const parentStyles = parseStylesAndAttrs(node.parentElement);
         if (parentStyles['text-align']) btnAlign = parentStyles['text-align'] as any;
+      }
+
+      // Outer block background color (MUST NOT be the button's own background color!)
+      let blockBgColor: string | undefined = undefined;
+      const parentContainer = (tagName === 'a' || tagName === 'button') ? node.parentElement : node.parentElement?.parentElement;
+      if (parentContainer) {
+        const parentBg = parseColor(parseStylesAndAttrs(parentContainer)['background-color']);
+        if (parentBg && parentBg.toLowerCase() !== btnBg.toLowerCase() && parentBg !== '#ffffff') {
+          blockBgColor = parentBg;
+        }
       }
 
       blocks.push({
@@ -797,6 +966,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
         fontSizePx: parsePxSize(anchorStyles['font-size'] || styles['font-size'], 16),
         isBold: true,
         fontFamily,
+        bgColor: blockBgColor,
       });
       markAllVisited(node);
       if (node.parentElement && (node.parentElement.tagName.toLowerCase() === 'div' || node.parentElement.tagName.toLowerCase() === 'td')) {
@@ -814,7 +984,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
           type: 'title',
           text,
           fontSizePx: fontSizePx || (tagName === 'h1' ? 28 : 24),
-          textColor: textColor || '#1e1b4b',
+          textColor: textColor !== '#334155' ? textColor : '#1e1b4b',
           bgColor,
           alignment,
           isBold: true,
@@ -835,7 +1005,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
           type: 'subtitle',
           text,
           fontSizePx: fontSizePx || 18,
-          textColor: textColor || '#475569',
+          textColor: textColor !== '#334155' ? textColor : '#475569',
           bgColor,
           alignment,
           isBold,
@@ -852,7 +1022,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
       const listItems = Array.from(node.querySelectorAll('li'));
       if (listItems.length > 0) {
         listItems.forEach((li) => {
-          const liText = getTextWithLineBreaks(li);
+          const liText = getTextWithFormattedHtml(li);
           if (liText) {
             blocks.push({
               id: createId(),
@@ -885,7 +1055,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
             type: 'title',
             text,
             fontSizePx,
-            textColor: textColor || '#1e1b4b',
+            textColor: textColor !== '#334155' ? textColor : '#1e1b4b',
             bgColor,
             alignment,
             isBold: true,
@@ -898,7 +1068,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
             type: 'subtitle',
             text,
             fontSizePx,
-            textColor: textColor || '#475569',
+            textColor: textColor !== '#334155' ? textColor : '#475569',
             bgColor,
             alignment,
             isBold,
