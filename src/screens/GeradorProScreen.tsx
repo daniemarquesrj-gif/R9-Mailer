@@ -482,6 +482,9 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
   const [isNormalizing, setIsNormalizing] = useState<boolean>(false);
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [isAddBlockMenuOpen, setIsAddBlockMenuOpen] = useState<boolean>(false);
+  const [openCardMenuId, setOpenCardMenuId] = useState<string | null>(null);
+  const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
   const lastParsedHtmlRef = useRef<string | undefined>(emailData.customCodeHtml);
@@ -1360,63 +1363,19 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
           </div>
         )}
 
-        {/* Row 1: Size, Family, Bold, Italic, Underline, Strikethrough, Transform */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
-          
-          {/* Font Size Input & Presets */}
-          <div className="lg:col-span-4 space-y-1">
-            <label className="block text-[11px] font-bold text-slate-600">
-              Tamanho da Fonte: <span className="text-indigo-600 font-extrabold">{currentFontSize}px</span>
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min="10"
-                max="48"
-                value={currentFontSize}
-                onChange={(e) => updateSelectedBlock({ fontSizePx: parseInt(e.target.value, 10) })}
-                className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-100 rounded-lg"
-              />
-              <input
-                type="number"
-                min="10"
-                max="72"
-                value={currentFontSize}
-                onChange={(e) => updateSelectedBlock({ fontSizePx: parseInt(e.target.value, 10) || 16 })}
-                className="w-16 text-xs p-1.5 border border-slate-300 rounded-md font-mono text-center"
-              />
-            </div>
-            {/* Quick Size Pills */}
-            <div className="flex gap-1 pt-1">
-              {[12, 14, 16, 18, 22, 28, 36].map((sz) => (
-                <button
-                  key={sz}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => applyFormattingToSelection('fontSize', sz)}
-                  className={`px-1.5 py-0.5 text-[10px] rounded font-semibold transition-all ${
-                    currentFontSize === sz ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                  title={`Aplicar ${sz}px ao trecho selecionado ou ao bloco`}
-                >
-                  {sz}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Text Style Toggle Buttons (Bold, Italic, Underline, Strikethrough) */}
-          <div className="lg:col-span-4 space-y-1">
-            <label className="block text-[11px] font-bold text-slate-600">Forma / Estilo do Texto:</label>
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 w-fit">
+        {/* Essential Format Toolbar (Always Visible) */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-100/80 p-2.5 rounded-2xl border border-slate-200/90">
+          {/* Style Buttons & Link */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200/90 shadow-2xs">
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => applyFormattingToSelection('bold')}
-                className={`w-8 h-8 rounded font-black text-sm flex items-center justify-center transition-all ${
-                  selectedBlock.isBold ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-700 hover:bg-slate-200'
+                className={`w-7 h-7 rounded-lg font-black text-xs transition-colors flex items-center justify-center ${
+                  selectedBlock.isBold ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-700 hover:bg-slate-100'
                 }`}
-                title="Negrito (Aplica ao trecho selecionado ou ao bloco)"
+                title="Negrito"
               >
                 B
               </button>
@@ -1424,10 +1383,10 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => applyFormattingToSelection('italic')}
-                className={`w-8 h-8 rounded italic font-serif text-sm flex items-center justify-center transition-all ${
-                  selectedBlock.isItalic ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-700 hover:bg-slate-200'
+                className={`w-7 h-7 rounded-lg italic font-serif text-xs transition-colors flex items-center justify-center ${
+                  selectedBlock.isItalic ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-700 hover:bg-slate-100'
                 }`}
-                title="Itálico (Aplica ao trecho selecionado ou ao bloco)"
+                title="Itálico"
               >
                 I
               </button>
@@ -1435,10 +1394,10 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => applyFormattingToSelection('underline')}
-                className={`w-8 h-8 rounded underline font-bold text-sm flex items-center justify-center transition-all ${
-                  selectedBlock.isUnderline ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-700 hover:bg-slate-200'
+                className={`w-7 h-7 rounded-lg underline font-bold text-xs transition-colors flex items-center justify-center ${
+                  selectedBlock.isUnderline ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-700 hover:bg-slate-100'
                 }`}
-                title="Sublinhado (Aplica ao trecho selecionado ou ao bloco)"
+                title="Sublinhado"
               >
                 U
               </button>
@@ -1446,193 +1405,252 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => applyFormattingToSelection('strikethrough')}
-                className={`w-8 h-8 rounded line-through font-bold text-sm flex items-center justify-center transition-all ${
-                  selectedBlock.isStrikethrough ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-700 hover:bg-slate-200'
+                className={`w-7 h-7 rounded-lg line-through font-bold text-xs transition-colors flex items-center justify-center ${
+                  selectedBlock.isStrikethrough ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-700 hover:bg-slate-100'
                 }`}
-                title="Riscado / Tachado (Aplica ao trecho selecionado ou ao bloco)"
+                title="Tachado"
               >
                 S
               </button>
+            </div>
+
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handleOpenLinkModal}
+              className="h-9 px-3 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 shadow-2xs"
+              title="Inserir / Editar Link no Texto"
+            >
+              <span className="material-symbols-outlined text-[18px] text-slate-500">link</span>
+              <span>Link</span>
+            </button>
+          </div>
+
+          {/* Alignment Controls */}
+          {showAlign && (
+            <div className="flex items-center gap-0.5 bg-white p-1 rounded-xl border border-slate-200/90 shadow-2xs">
               <button
                 type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={handleOpenLinkModal}
-                className="h-8 px-2 rounded font-bold text-xs flex items-center gap-1 transition-all bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200"
-                title="Inserir ou editar Link no texto"
+                onClick={() => updateSelectedBlock({ alignment: 'left' })}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                  currentAlign === 'left' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+                title="Esquerda"
               >
-                <span className="material-symbols-outlined text-[16px]">link</span>
-                <span>Link</span>
+                <span className="material-symbols-outlined text-[16px]">format_align_left</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateSelectedBlock({ alignment: 'center' })}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                  currentAlign === 'center' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+                title="Centralizado"
+              >
+                <span className="material-symbols-outlined text-[16px]">format_align_center</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateSelectedBlock({ alignment: 'right' })}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                  currentAlign === 'right' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+                title="Direita"
+              >
+                <span className="material-symbols-outlined text-[16px]">format_align_right</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateSelectedBlock({ alignment: 'justify' })}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                  currentAlign === 'justify' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+                title="Justificado"
+              >
+                <span className="material-symbols-outlined text-[16px]">format_align_justify</span>
               </button>
             </div>
-          </div>
+          )}
 
-          {/* Text Transform / Capitalization */}
-          <div className="lg:col-span-4 space-y-1">
-            <label className="block text-[11px] font-bold text-slate-600">Caixa de Texto:</label>
-            <select
-              value={selectedBlock.textTransform || 'none'}
-              onChange={(e) => updateSelectedBlock({ textTransform: e.target.value as any })}
-              className="w-full text-xs p-2 border border-slate-300 rounded-lg bg-white font-medium"
-            >
-              <option value="none">Normal (Sem alteração)</option>
-              <option value="uppercase">MAIÚSCULAS (UPPERCASE)</option>
-              <option value="lowercase">minúsculas (lowercase)</option>
-              <option value="capitalize">Primeira Letra Maiúscula</option>
-            </select>
-          </div>
+          {/* Advanced Settings Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsAdvancedSettingsOpen(!isAdvancedSettingsOpen)}
+            className="px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:text-indigo-600 shadow-2xs"
+          >
+            <span className="material-symbols-outlined text-[18px] text-indigo-600">tune</span>
+            <span>Configurações Avançadas</span>
+            <span className="material-symbols-outlined text-[18px] text-slate-400">
+              {isAdvancedSettingsOpen ? 'expand_less' : 'expand_more'}
+            </span>
+          </button>
         </div>
 
-        {/* Row 2: Alignment, Font Family, Line Height */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
-          
-          {/* Alignment */}
-          {showAlign && (
-            <div className="space-y-1">
-              <label className="block text-[11px] font-bold text-slate-600">Alinhamento:</label>
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => updateSelectedBlock({ alignment: 'left' })}
-                  className={`flex-1 py-1 rounded flex items-center justify-center transition-all ${
-                    currentAlign === 'left' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                  title="Esquerda"
-                >
-                  <span className="material-symbols-outlined text-[18px]">format_align_left</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateSelectedBlock({ alignment: 'center' })}
-                  className={`flex-1 py-1 rounded flex items-center justify-center transition-all ${
-                    currentAlign === 'center' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                  title="Centralizado"
-                >
-                  <span className="material-symbols-outlined text-[18px]">format_align_center</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateSelectedBlock({ alignment: 'right' })}
-                  className={`flex-1 py-1 rounded flex items-center justify-center transition-all ${
-                    currentAlign === 'right' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                  title="Direita"
-                >
-                  <span className="material-symbols-outlined text-[18px]">format_align_right</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateSelectedBlock({ alignment: 'justify' })}
-                  className={`flex-1 py-1 rounded flex items-center justify-center transition-all ${
-                    currentAlign === 'justify' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                  title="Justificado"
-                >
-                  <span className="material-symbols-outlined text-[18px]">format_align_justify</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Font Family */}
-          {showFontFamily && (
-            <div className="space-y-1">
-              <label className="block text-[11px] font-bold text-slate-600">Família da Fonte:</label>
-              <select
-                value={selectedBlock.fontFamily || 'Helvetica, Arial, sans-serif'}
-                onChange={(e) => updateSelectedBlock({ fontFamily: e.target.value })}
-                className="w-full text-xs p-2 border border-slate-300 rounded-lg bg-white"
-              >
-                <option value="Helvetica, Arial, sans-serif">Helvetica / Arial (Padrão e-mail)</option>
-                <option value="Georgia, serif">Georgia (Serifada Elegante)</option>
-                <option value="'Times New Roman', Times, serif">Times New Roman (Clássica)</option>
-                <option value="'Courier New', Courier, monospace">Courier New (Monospaçada)</option>
-                <option value="Verdana, Geneva, sans-serif">Verdana (Leitura limpa)</option>
-                <option value="'Trebuchet MS', sans-serif">Trebuchet MS (Moderna)</option>
-              </select>
-            </div>
-          )}
-
-          {/* Line Height */}
-          {showLineHeight && (
-            <div className="space-y-1">
-              <label className="block text-[11px] font-bold text-slate-600">Altura de Linha (Espaçamento):</label>
-              <select
-                value={selectedBlock.lineHeight || '1.5'}
-                onChange={(e) => updateSelectedBlock({ lineHeight: e.target.value })}
-                className="w-full text-xs p-2 border border-slate-300 rounded-lg bg-white"
-              >
-                <option value="1.2">Compacto (1.2)</option>
-                <option value="1.4">Normal (1.4)</option>
-                <option value="1.6">Confortável (1.6 - Recomendado)</option>
-                <option value="1.8">Espaçado (1.8)</option>
-                <option value="2.0">Duplo (2.0)</option>
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* Row 3: Colors (Text Color & Background Color) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-          {showTextColor && (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="block text-[11px] font-bold text-slate-700">Cor do Texto (Selecionado ou Bloco):</label>
-                <span className="text-[11px] font-mono text-slate-500 uppercase">{currentTextColor}</span>
-              </div>
+        {/* Collapsible Advanced Settings Accordion */}
+        {isAdvancedSettingsOpen && (
+          <div className="bg-slate-50 border border-slate-200/90 p-4 rounded-2xl space-y-4 shadow-2xs animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
               <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={currentTextColor}
-                  onChange={(e) => applyFormattingToSelection('color', e.target.value)}
-                  className="w-10 h-8 p-0.5 border border-slate-300 rounded cursor-pointer bg-white"
-                />
-                <div className="flex flex-wrap gap-1">
-                  {COLOR_PRESETS.map((hex) => (
-                    <button
-                      key={hex}
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => applyFormattingToSelection('color', hex)}
-                      className="w-5 h-5 rounded-full border border-slate-300 transition-transform hover:scale-110 shadow-2xs"
-                      style={{ backgroundColor: hex }}
-                      title={`Aplicar cor ${hex} ao texto selecionado ou bloco`}
-                    />
-                  ))}
+                <span className="material-symbols-outlined text-[18px] text-indigo-600">tune</span>
+                <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
+                  Configurações Avançadas (Tamanho, Cores, Fontes)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAdvancedSettingsOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-xs font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">expand_less</span>
+              </button>
+            </div>
+
+            {/* 2-Column Grid of Advanced Settings */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Tamanho da Fonte (px) */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700">Tamanho da Fonte (px):</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="10"
+                    max="48"
+                    value={currentFontSize}
+                    onChange={(e) => updateSelectedBlock({ fontSizePx: parseInt(e.target.value, 10) })}
+                    className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                  />
+                  <span className="text-xs font-extrabold text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-md shrink-0">
+                    {currentFontSize}px
+                  </span>
                 </div>
               </div>
-            </div>
-          )}
 
-          {showBgColor && (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="block text-[11px] font-bold text-slate-700">Cor de Fundo do Bloco:</label>
-                <span className="text-[11px] font-mono text-slate-500 uppercase">{currentBgColor}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={currentBgColor}
-                  onChange={(e) => updateSelectedBlock({ [defaultBgKey]: e.target.value } as any)}
-                  className="w-10 h-8 p-0.5 border border-slate-300 rounded cursor-pointer bg-white"
-                />
-                <div className="flex flex-wrap gap-1">
-                  {['#ffffff', '#f8fafc', '#f1f5f9', '#e0e7ff', '#f0fdf4', '#fef2f2', '#fffbeb', '#1e1b4b'].map((hex) => (
-                    <button
-                      key={hex}
-                      type="button"
-                      onClick={() => updateSelectedBlock({ [defaultBgKey]: hex } as any)}
-                      className="w-5 h-5 rounded-full border border-slate-300 transition-transform hover:scale-110 shadow-2xs"
-                      style={{ backgroundColor: hex }}
-                      title={`Fundo: ${hex}`}
-                    />
-                  ))}
+              {/* Família da Fonte */}
+              {showFontFamily && (
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700">Família da Fonte:</label>
+                  <select
+                    value={selectedBlock.fontFamily || 'Helvetica, Arial, sans-serif'}
+                    onChange={(e) => updateSelectedBlock({ fontFamily: e.target.value })}
+                    className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-white font-medium text-slate-800"
+                  >
+                    <option value="Helvetica, Arial, sans-serif">Helvetica / Arial (E-mail padrão)</option>
+                    <option value="Georgia, serif">Georgia (Serifada)</option>
+                    <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                    <option value="'Courier New', Courier, monospace">Courier New</option>
+                    <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                    <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                  </select>
                 </div>
+              )}
+
+              {/* Altura da Linha */}
+              {showLineHeight && (
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700">Altura da Linha:</label>
+                  <select
+                    value={selectedBlock.lineHeight || '1.4'}
+                    onChange={(e) => updateSelectedBlock({ lineHeight: e.target.value })}
+                    className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-white font-medium text-slate-800"
+                  >
+                    <option value="1.2">Compacto (1.2)</option>
+                    <option value="1.4">Normal (1.4)</option>
+                    <option value="1.6">Confortável (1.6)</option>
+                    <option value="1.8">Espaçado (1.8)</option>
+                    <option value="2.0">Duplo (2.0)</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Estilo de Caixa */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700">Estilo de Caixa:</label>
+                <select
+                  value={selectedBlock.textTransform || 'none'}
+                  onChange={(e) => updateSelectedBlock({ textTransform: e.target.value as any })}
+                  className="w-full text-xs p-2.5 border border-slate-300 rounded-xl bg-white font-medium text-slate-800"
+                >
+                  <option value="none">Normal (Padrão)</option>
+                  <option value="uppercase">MAIÚSCULAS</option>
+                  <option value="lowercase">minúsculas</option>
+                  <option value="capitalize">Primeira Maiúscula</option>
+                </select>
+              </div>
+
+              {/* Cor do Texto */}
+              {showTextColor && (
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700">Cor do Texto:</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={currentTextColor}
+                      onChange={(e) => applyFormattingToSelection('color', e.target.value)}
+                      className="w-9 h-8 p-0.5 border border-slate-300 rounded-lg cursor-pointer bg-white"
+                    />
+                    <div className="flex flex-wrap gap-1.5">
+                      {['#ffffff', '#1e1b4b', '#0f172a', '#334155', '#dc2626', '#16a34a', '#2563eb', '#0284c7'].map((hex) => (
+                        <button
+                          key={hex}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => applyFormattingToSelection('color', hex)}
+                          className="w-5 h-5 rounded-full border border-slate-300 transition-transform hover:scale-110 shadow-2xs"
+                          style={{ backgroundColor: hex }}
+                          title={`Cor ${hex}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Cor de Fundo do Bloco */}
+              {showBgColor && (
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700">Cor de Fundo do Bloco:</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={currentBgColor}
+                      onChange={(e) => updateSelectedBlock({ [defaultBgKey]: e.target.value } as any)}
+                      className="w-9 h-8 p-0.5 border border-slate-300 rounded-lg cursor-pointer bg-white"
+                    />
+                    <div className="flex flex-wrap gap-1.5">
+                      {['#1e1b4b', '#ffffff', '#f8fafc', '#f1f5f9', '#e0e7ff', '#f0fdf4', '#fef2f2', '#fffbeb', '#0284c7', '#0f172a'].map((hex) => (
+                        <button
+                          key={hex}
+                          type="button"
+                          onClick={() => updateSelectedBlock({ [defaultBgKey]: hex } as any)}
+                          className="w-5 h-5 rounded-full border border-slate-300 transition-transform hover:scale-110 shadow-2xs"
+                          style={{ backgroundColor: hex }}
+                          title={`Fundo: ${hex}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Atalhos de Variáveis */}
+            <div className="pt-3 border-t border-slate-200/80 space-y-2">
+              <label className="block text-xs font-bold text-slate-700">Atalhos de Variáveis:</label>
+              <div className="flex items-center gap-2 flex-wrap">
+                {['{{nome}}', '{{email}}', '{{empresa}}', '{{var1}}', '{{var2}}'].map((vName) => (
+                  <button
+                    key={vName}
+                    type="button"
+                    onClick={() => insertVariableToSelectedBlock(vName)}
+                    className="px-3 py-1 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/90 text-xs font-mono font-bold rounded-lg transition-all active:scale-95 shadow-2xs cursor-pointer"
+                  >
+                    {vName}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -1758,306 +1776,316 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
         </div>
 
         {/* =========================================================================
-            PARTE 1: ESTRUTURA DOS BLOCOS (Adição e Reordenação)
+            LAYOUT EM TELA DIVIDIDA (SPLIT SCREEN: EDITOR À ESQUERDA + CANVAS À DIREITA)
         ========================================================================= */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extrabold uppercase text-slate-800 tracking-wider flex items-center gap-2">
-              <span className="bg-indigo-600 text-white w-5 h-5 rounded-full text-[11px] flex items-center justify-center font-bold">1</span>
-              <span>Parte de Estrutura (Adicionar & Reordenar Blocos)</span>
-            </h2>
-            <span className="text-xs text-slate-500 font-medium">{blocks.length} blocos adicionados</span>
-          </div>
-
-          {/* Quick Add Block Bar */}
-          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-            <p className="text-xs font-semibold text-slate-600 mb-2.5">Adicionar novo bloco ao layout:</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => handleAddBlock('header_text')}
-                className="px-2.5 py-1.5 bg-indigo-50 border border-indigo-200 hover:border-indigo-500 hover:text-indigo-600 rounded-lg text-xs font-extrabold text-indigo-700 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[16px]">web_asset</span>
-                <span>+ Texto do Cabeçalho</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock('header_image')}
-                className="px-2.5 py-1.5 bg-indigo-100 border border-indigo-300 hover:border-indigo-600 hover:text-indigo-800 rounded-lg text-xs font-extrabold text-indigo-900 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[16px]">view_day</span>
-                <span>+ Imagem de Cabeçalho</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock('header')}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 rounded-lg text-xs font-semibold text-slate-700 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[16px]">web_asset</span>
-                <span>+ Cabeçalho Simples</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock('title')}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 rounded-lg text-xs font-semibold text-slate-700 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[16px]">title</span>
-                <span>+ Título</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock('subtitle')}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 rounded-lg text-xs font-semibold text-slate-700 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[16px]">format_size</span>
-                <span>+ Subtítulo</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock('text')}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 rounded-lg text-xs font-semibold text-slate-700 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[16px]">notes</span>
-                <span>+ Texto</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock('button')}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 rounded-lg text-xs font-semibold text-slate-700 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[16px]">smart_button</span>
-                <span>+ Botão CTA</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock('image')}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 rounded-lg text-xs font-semibold text-slate-700 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[16px]">image</span>
-                <span>+ Banner / Imagem</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock('coupon')}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 rounded-lg text-xs font-semibold text-slate-700 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[16px]">local_offer</span>
-                <span>+ Cupom</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock('divider')}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 rounded-lg text-xs font-semibold text-slate-700 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[16px]">horizontal_rule</span>
-                <span>+ Divisor</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock('social')}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 rounded-lg text-xs font-semibold text-slate-700 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[16px]">share</span>
-                <span>+ Redes Sociais</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAddBlock('footer')}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 rounded-lg text-xs font-semibold text-slate-700 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[16px]">call_to_action</span>
-                <span>+ Rodapé</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Active Structure Blocks List */}
-          <div className="flex items-center justify-between text-xs text-slate-500 font-medium px-1">
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px] text-indigo-600">drag_indicator</span>
-              <span><strong>Arraste e solte</strong> o ícone de cada bloco para reordenar, ou utilize as setas <strong>▲ / ▼</strong>.</span>
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {blocks.map((block, idx) => {
-              const isSelected = block.id === selectedBlockId;
-              const isBeingDragged = draggedIdx === idx;
-              const isTargeted = dragOverIdx === idx && draggedIdx !== idx;
-              const { name, icon } = getBlockLabel(block.type);
-
-              return (
-                <div
-                  key={block.id}
-                  draggable
-                  onDragStart={(e) => {
-                    setDraggedIdx(idx);
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('text/plain', String(idx));
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                    if (dragOverIdx !== idx) {
-                      setDragOverIdx(idx);
-                    }
-                  }}
-                  onDragEnter={(e) => {
-                    e.preventDefault();
-                    if (dragOverIdx !== idx) {
-                      setDragOverIdx(idx);
-                    }
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    if (draggedIdx !== null && draggedIdx !== idx) {
-                      handleReorder(draggedIdx, idx);
-                    }
-                    setDraggedIdx(null);
-                    setDragOverIdx(null);
-                  }}
-                  onDragEnd={() => {
-                    setDraggedIdx(null);
-                    setDragOverIdx(null);
-                  }}
-                  onClick={() => setSelectedBlockId(block.id)}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
-                    isBeingDragged
-                      ? 'opacity-40 border-dashed border-indigo-500 bg-indigo-50/50'
-                      : isTargeted
-                      ? 'bg-indigo-100/90 border-indigo-600 ring-2 ring-indigo-500/40 scale-[1.01] shadow-md'
-                      : isSelected
-                      ? 'bg-indigo-50/80 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs'
-                      : 'bg-white border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 overflow-hidden">
-                    {/* Drag Handle Icon */}
-                    <div
-                      className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-indigo-600 transition-colors shrink-0 flex items-center justify-center p-0.5 rounded hover:bg-slate-100"
-                      title="Segure e arraste para posicionar o bloco"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
-                    </div>
-
-                    <span className="text-xs font-bold text-slate-400 shrink-0 w-5">#{idx + 1}</span>
-                    <span className="material-symbols-outlined text-indigo-600 shrink-0">{icon}</span>
-                    <div className="truncate">
-                      <p className="text-xs font-bold text-slate-800 truncate">{name}</p>
-                      <p className="text-[11px] text-slate-500 truncate">
-                        {block.headerTitle || block.text || block.buttonLabel || block.couponCode || 'Bloco configurável'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Reorder and Delete Controls */}
-                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      disabled={idx === 0}
-                      onClick={() => handleMoveUp(idx)}
-                      className="w-6 h-6 rounded flex items-center justify-center text-slate-500 hover:bg-slate-200 disabled:opacity-30"
-                      title="Mover para cima"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      disabled={idx === blocks.length - 1}
-                      onClick={() => handleMoveDown(idx)}
-                      className="w-6 h-6 rounded flex items-center justify-center text-slate-500 hover:bg-slate-200 disabled:opacity-30"
-                      title="Mover para baixo"
-                    >
-                      ▼
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDuplicate(block)}
-                      className="w-6 h-6 rounded flex items-center justify-center text-slate-500 hover:bg-slate-200"
-                      title="Duplicar bloco"
-                    >
-                      <span className="material-symbols-outlined text-[15px]">content_copy</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(block.id)}
-                      className="w-6 h-6 rounded flex items-center justify-center text-red-500 hover:bg-red-50"
-                      title="Excluir bloco"
-                    >
-                      <span className="material-symbols-outlined text-[15px]">delete</span>
-                    </button>
-                  </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* COLUNA ESQUERDA: GERENCIAMENTO DE BLOCOS + EDIÇÃO DO BLOCO SELECIONADO */}
+          <div className="lg:col-span-7 xl:col-span-6 space-y-6">
+            
+            {/* SEÇÃO 1: ESTRUTURA DOS BLOCOS */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xs">
+              <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-200/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="bg-indigo-600 text-white w-5 h-5 rounded-full text-[11px] flex items-center justify-center font-bold">1</span>
+                  <h2 className="text-xs font-extrabold uppercase text-slate-800 tracking-wider">Estrutura dos Blocos ({blocks.length})</h2>
                 </div>
-              );
-            })}
-          </div>
-        </div>
+                
+                {/* Unified "+ Adicionar Bloco" Categorized Dropdown Popover */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddBlockMenuOpen(!isAddBlockMenuOpen)}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all active:scale-95 flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                    <span>+ Adicionar Bloco</span>
+                    <span className="material-symbols-outlined text-[16px]">
+                      {isAddBlockMenuOpen ? 'expand_less' : 'expand_more'}
+                    </span>
+                  </button>
+
+                  {isAddBlockMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-20" onClick={() => setIsAddBlockMenuOpen(false)} />
+                      <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl z-30 p-2 space-y-2 divide-y divide-slate-100 max-h-96 overflow-y-auto animate-fadeIn">
+                        {/* Category: Cabeçalho */}
+                        <div>
+                          <span className="text-[10px] font-black uppercase text-indigo-700 tracking-wider px-2.5 py-1 block">
+                            Cabeçalho & Banners
+                          </span>
+                          <div className="space-y-0.5">
+                            <button
+                              type="button"
+                              onClick={() => { handleAddBlock('header_text'); setIsAddBlockMenuOpen(false); }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 text-xs font-semibold text-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px] text-indigo-600">web_asset</span>
+                              <span>Texto do Cabeçalho</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { handleAddBlock('header_image'); setIsAddBlockMenuOpen(false); }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 text-xs font-semibold text-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px] text-indigo-600">view_day</span>
+                              <span>Imagem do Cabeçalho</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { handleAddBlock('header'); setIsAddBlockMenuOpen(false); }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 text-xs font-semibold text-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px] text-indigo-600">web_asset</span>
+                              <span>Cabeçalho Simples</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Category: Conteúdo */}
+                        <div className="pt-2">
+                          <span className="text-[10px] font-black uppercase text-indigo-700 tracking-wider px-2.5 py-1 block">
+                            Conteúdo do E-mail
+                          </span>
+                          <div className="space-y-0.5">
+                            <button
+                              type="button"
+                              onClick={() => { handleAddBlock('title'); setIsAddBlockMenuOpen(false); }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 text-xs font-semibold text-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px] text-indigo-600">title</span>
+                              <span>Título</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { handleAddBlock('subtitle'); setIsAddBlockMenuOpen(false); }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 text-xs font-semibold text-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px] text-indigo-600">format_size</span>
+                              <span>Subtítulo</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { handleAddBlock('text'); setIsAddBlockMenuOpen(false); }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 text-xs font-semibold text-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px] text-indigo-600">notes</span>
+                              <span>Texto / Parágrafo</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { handleAddBlock('button'); setIsAddBlockMenuOpen(false); }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 text-xs font-semibold text-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px] text-indigo-600">smart_button</span>
+                              <span>Botão CTA</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { handleAddBlock('image'); setIsAddBlockMenuOpen(false); }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 text-xs font-semibold text-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px] text-indigo-600">image</span>
+                              <span>Banner / Imagem</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { handleAddBlock('coupon'); setIsAddBlockMenuOpen(false); }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 text-xs font-semibold text-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px] text-indigo-600">local_offer</span>
+                              <span>Cupom de Desconto</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { handleAddBlock('divider'); setIsAddBlockMenuOpen(false); }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 text-xs font-semibold text-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px] text-indigo-600">horizontal_rule</span>
+                              <span>Divisor</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Category: Rodapé e Social */}
+                        <div className="pt-2">
+                          <span className="text-[10px] font-black uppercase text-indigo-700 tracking-wider px-2.5 py-1 block">
+                            Rodapé & Redes
+                          </span>
+                          <div className="space-y-0.5">
+                            <button
+                              type="button"
+                              onClick={() => { handleAddBlock('social'); setIsAddBlockMenuOpen(false); }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 text-xs font-semibold text-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px] text-indigo-600">share</span>
+                              <span>Redes Sociais</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { handleAddBlock('footer'); setIsAddBlockMenuOpen(false); }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 text-xs font-semibold text-slate-800 flex items-center gap-2 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px] text-indigo-600">call_to_action</span>
+                              <span>Rodapé</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Active Structure Blocks List with 3-Dots Context Menu */}
+              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                {blocks.map((block, idx) => {
+                  const isSelected = block.id === selectedBlockId;
+                  const isBeingDragged = draggedIdx === idx;
+                  const isTargeted = dragOverIdx === idx && draggedIdx !== idx;
+                  const { name, icon } = getBlockLabel(block.type);
+                  const isMenuOpen = openCardMenuId === block.id;
+
+                  return (
+                    <div
+                      key={block.id}
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggedIdx(idx);
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', String(idx));
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        if (dragOverIdx !== idx) setDragOverIdx(idx);
+                      }}
+                      onDragEnter={(e) => {
+                        e.preventDefault();
+                        if (dragOverIdx !== idx) setDragOverIdx(idx);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (draggedIdx !== null && draggedIdx !== idx) {
+                          handleReorder(draggedIdx, idx);
+                        }
+                        setDraggedIdx(null);
+                        setDragOverIdx(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedIdx(null);
+                        setDragOverIdx(null);
+                      }}
+                      onClick={() => setSelectedBlockId(block.id)}
+                      className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 select-none ${
+                        isBeingDragged
+                          ? 'opacity-40 border-dashed border-indigo-500 bg-indigo-50/50'
+                          : isTargeted
+                          ? 'bg-indigo-100/90 border-indigo-600 ring-2 ring-indigo-500/40 shadow-xs'
+                          : isSelected
+                          ? 'bg-indigo-50/90 border-indigo-500 ring-2 ring-indigo-500/20 shadow-2xs'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-indigo-600 transition-colors shrink-0 p-1 rounded hover:bg-slate-100"
+                          title="Segure e arraste para reordenar"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
+                        </div>
+
+                        <span className="text-[11px] font-mono font-bold text-slate-400 shrink-0">#{idx + 1}</span>
+                        <span className="material-symbols-outlined text-indigo-600 text-[18px] shrink-0">{icon}</span>
+
+                        <div className="truncate min-w-0">
+                          <p className="text-xs font-bold text-slate-800 truncate">{name}</p>
+                          <p className="text-[11px] text-slate-500 truncate">
+                            {block.headerTitle || block.text || block.buttonLabel || block.couponCode || 'Configurar conteúdo'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 3-Dots Context Menu Button */}
+                      <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => setOpenCardMenuId(isMenuOpen ? null : block.id)}
+                          className="w-7 h-7 rounded-lg hover:bg-slate-200/80 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors"
+                          title="Opções do Bloco"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">more_vert</span>
+                        </button>
+
+                        {isMenuOpen && (
+                          <>
+                            <div className="fixed inset-0 z-30" onClick={() => setOpenCardMenuId(null)} />
+                            <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl z-40 py-1 text-xs space-y-0.5 font-medium animate-fadeIn">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => { handleMoveUp(idx); setOpenCardMenuId(null); }}
+                                className="w-full text-left px-3 py-1.5 hover:bg-slate-100 disabled:opacity-30 text-slate-700 flex items-center gap-2"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
+                                <span>Mover p/ Cima</span>
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === blocks.length - 1}
+                                onClick={() => { handleMoveDown(idx); setOpenCardMenuId(null); }}
+                                className="w-full text-left px-3 py-1.5 hover:bg-slate-100 disabled:opacity-30 text-slate-700 flex items-center gap-2"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
+                                <span>Mover p/ Baixo</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { handleDuplicate(block); setOpenCardMenuId(null); }}
+                                className="w-full text-left px-3 py-1.5 hover:bg-slate-100 text-slate-700 flex items-center gap-2"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                                <span>Duplicar Bloco</span>
+                              </button>
+                              <div className="border-t border-slate-100 my-1" />
+                              <button
+                                type="button"
+                                onClick={() => { handleDelete(block.id); setOpenCardMenuId(null); }}
+                                className="w-full text-left px-3 py-1.5 hover:bg-red-50 text-red-600 flex items-center gap-2"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                                <span>Excluir Bloco</span>
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
         {/* =========================================================================
             PARTE 2: CONFIGURAÇÃO / EDIÇÃO DO BLOCO SELECIONADO
         ========================================================================= */}
         {selectedBlock && (
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 md:p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-200 pb-3">
               <h2 className="text-sm font-extrabold uppercase text-slate-800 tracking-wider flex items-center gap-2">
                 <span className="bg-indigo-600 text-white w-5 h-5 rounded-full text-[11px] flex items-center justify-center font-bold">2</span>
                 <span>Editando Bloco: {getBlockLabel(selectedBlock.type).name}</span>
               </h2>
 
-              {/* Variable Injection Chips */}
-              <div className="hidden sm:flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-semibold text-slate-500">Inserir Variável:</span>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => insertVariableToSelectedBlock('{{nome}}')}
-                  className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[11px] font-mono font-bold rounded hover:bg-indigo-50 shadow-2xs"
-                  title="Inserir Nome"
+                  onClick={() => duplicateBlock(selectedBlock.id)}
+                  className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-600 border border-slate-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
+                  title="Duplicar este bloco"
                 >
-                  &#123;&#123;nome&#125;&#125;
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertVariableToSelectedBlock('{{email}}')}
-                  className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[11px] font-mono font-bold rounded hover:bg-indigo-50 shadow-2xs"
-                  title="Inserir Email"
-                >
-                  &#123;&#123;email&#125;&#125;
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertVariableToSelectedBlock('{{var1}}')}
-                  className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[11px] font-mono font-bold rounded hover:bg-indigo-50 shadow-2xs"
-                  title="Inserir Var1 (Livre)"
-                >
-                  &#123;&#123;var1&#125;&#125;
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertVariableToSelectedBlock('{{var2}}')}
-                  className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[11px] font-mono font-bold rounded hover:bg-indigo-50 shadow-2xs"
-                  title="Inserir Var2 (Livre)"
-                >
-                  &#123;&#123;var2&#125;&#125;
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertVariableToSelectedBlock('{{var3}}')}
-                  className="px-2 py-0.5 bg-white border border-indigo-200 text-indigo-700 text-[11px] font-mono font-bold rounded hover:bg-indigo-50 shadow-2xs"
-                  title="Inserir Var3 (Livre)"
-                >
-                  &#123;&#123;var3&#125;&#125;
+                  <span className="material-symbols-outlined text-[16px] text-slate-500">content_copy</span>
+                  <span>Duplicar</span>
                 </button>
               </div>
             </div>
@@ -2835,57 +2863,73 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
             )}
           </div>
         )}
+      </div>
 
-        {/* =========================================================================
-            PARTE 3: PREVIEW AO VIVO
-        ========================================================================= */}
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-            <h2 className="text-sm font-extrabold uppercase text-slate-800 tracking-wider flex items-center gap-2">
-              <span className="bg-indigo-600 text-white w-5 h-5 rounded-full text-[11px] flex items-center justify-center font-bold">3</span>
-              <span>Pré-Visualização do E-mail Montado</span>
-            </h2>
+      {/* COLUNA DIREITA: CANVAS DE VISUALIZAÇÃO EM TEMPO REAL (STICKY ON DESKTOP) */}
+          <div className="lg:col-span-5 xl:col-span-6 lg:sticky lg:top-24 lg:self-start space-y-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <h2 className="text-xs font-extrabold uppercase text-slate-800 tracking-wider flex items-center gap-1.5">
+                    <span>Visualização Real-time</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-black">AO VIVO</span>
+                  </h2>
+                </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setPreviewDevice('desktop')}
-                  className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all ${
-                    previewDevice === 'desktop' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600'
+                <div className="flex items-center gap-2">
+                  <div className="flex bg-slate-200/80 p-0.5 rounded-xl border border-slate-300">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewDevice('desktop')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                        previewDevice === 'desktop' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[15px]">desktop_windows</span>
+                      <span>PC</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewDevice('mobile')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                        previewDevice === 'mobile' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[15px]">smartphone</span>
+                      <span>Mobile</span>
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('visualizacao', 'push')}
+                    className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-2xs"
+                    title="Ver em tela cheia / Exportar HTML"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">open_in_full</span>
+                    <span className="hidden sm:inline">Expandir</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Rendered Live Canvas Simulation Container */}
+              <div className="bg-slate-100/90 rounded-2xl p-3 sm:p-4 flex justify-center items-center min-h-[520px]">
+                <div
+                  className={`transition-all duration-300 bg-white rounded-xl shadow-md overflow-hidden ${
+                    previewDevice === 'mobile' ? 'w-[340px]' : 'w-full max-w-[580px]'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[16px]">desktop_windows</span>
-                  <span>Desktop</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewDevice('mobile')}
-                  className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all ${
-                    previewDevice === 'mobile' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[16px]">smartphone</span>
-                  <span>Mobile</span>
-                </button>
+                  <iframe
+                    title="Gerador PRO Live Preview Canvas"
+                    srcDoc={compiledHtml}
+                    className="w-full h-[580px] border-0"
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Rendered Live HTML Preview Box */}
-          <div className="bg-slate-100 rounded-xl p-4 sm:p-8 flex justify-center items-center min-h-[400px]">
-            <div
-              className={`transition-all duration-300 bg-white rounded-lg shadow-md overflow-hidden ${
-                previewDevice === 'mobile' ? 'w-[360px]' : 'w-full max-w-[620px]'
-              }`}
-            >
-              <iframe
-                title="Gerador PRO Live Preview"
-                srcDoc={compiledHtml}
-                className="w-full h-[520px] border-0"
-              />
-            </div>
-          </div>
         </div>
 
       </div>
