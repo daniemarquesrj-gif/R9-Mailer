@@ -15,9 +15,11 @@ export const Header: React.FC<HeaderProps> = ({ currentScreen, onNavigate, subti
         className="flex items-center gap-3 cursor-pointer select-none"
         onClick={() => onNavigate('inicio', 'none')}
       >
-        <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-xs shadow-xs">
-          R9
-        </div>
+        <img 
+          src="/favicon.svg" 
+          alt="R9 Logo" 
+          className="w-8 h-8 rounded-lg shadow-xs transition-transform hover:scale-105" 
+        />
         <div className="flex items-baseline gap-2">
           <span className="text-xl font-bold text-slate-800 tracking-tight">
             R9Bot <span className="font-light text-slate-500">Mailer</span>

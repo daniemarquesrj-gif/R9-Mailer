@@ -32,8 +32,9 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ onNavigate }) => {
             <span>Manual do Usuário & Visão Geral</span>
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
-            Bem-vindo ao <span className="text-blue-400">R9Bot Mailer</span>
+          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight flex items-center justify-center md:justify-start gap-3">
+            <img src="/favicon.svg" alt="R9 Logo" className="w-10 h-10 md:w-12 md:h-12 rounded-xl shadow-md border border-white/20" />
+            <span>Bem-vindo ao <span className="text-blue-400">R9Bot Mailer</span></span>
           </h1>
 
           <p className="text-slate-300 text-sm md:text-lg max-w-3xl leading-relaxed">

@@ -158,6 +158,18 @@ function getTextWithLineBreaks(node: Element): string {
 }
 
 /**
+ * Extracts text from an element while preserving <a> links if present.
+ */
+function getTextWithFormattedHtml(node: Element): string {
+  if (node.querySelector('a')) {
+    const clone = node.cloneNode(true) as Element;
+    clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+    return clone.innerHTML.trim();
+  }
+  return getTextWithLineBreaks(node);
+}
+
+/**
  * Checks if a node is a button element (<a> or <button> or button wrapper)
  */
 function isButtonElement(node: Element, styles: Record<string, string>): boolean {
@@ -864,7 +876,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
 
     // 11. PARAGRAPHS & LEAF TEXT CONTAINERS
     if (tagName === 'p' || tagName === 'li' || !hasBlockChildren(node, styles)) {
-      const text = getTextWithLineBreaks(node);
+      const text = getTextWithFormattedHtml(node);
       if (text && text.length > 0) {
         // Decide block type based on font size or styling
         if (fontSizePx >= 22) {
