@@ -4,6 +4,7 @@ import { parseHtmlToBlocks } from '../utils/htmlParser';
 import { normalizeImage } from '../utils/imageNormalizer';
 import { uploadToPublicHost, checkImageSize } from '../utils/imageUploader';
 import { DEFAULT_TEMPLATES } from '../data/templates';
+import { RichTextEditor, RichTextEditorRef } from '../components/RichTextEditor';
 
 export type BlockType = 
   | 'header'
@@ -487,6 +488,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
+  const activeEditorRef = useRef<RichTextEditorRef | null>(null);
   const lastParsedHtmlRef = useRef<string | undefined>(emailData.customCodeHtml);
 
   // Continuously sync compiled HTML from Gerador Visual blocks to global emailData.customCodeHtml
@@ -934,7 +936,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
     const fieldName = activeSelection?.fieldName || defaultField;
     const fullText = String((selectedBlock as any)[fieldName] || '');
 
-    let selText = activeSelection?.selectedText || '';
+    let selText = activeEditorRef.current?.getSelectionText() || activeSelection?.selectedText || '';
     const cleanSelText = selText.replace(/<[^>]*>/g, '');
 
     let existingUrl = 'https://';
@@ -968,64 +970,40 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
     const displayText = linkText.trim() || finalUrl;
     const linkHtml = `<a href="${finalUrl}" target="_blank" style="color: #4f46e5; text-decoration: underline;">${displayText}</a>`;
 
-    if (!selectedBlock) return;
+    if (activeEditorRef.current) {
+      activeEditorRef.current.insertHtml(linkHtml);
+      showToast(`Link "${displayText}" inserido com sucesso no texto!`);
+    } else if (selectedBlock) {
+      const defaultField = (
+        (selectedBlock.type === 'header' || selectedBlock.type === 'header_text') ? 'headerTitle' :
+        selectedBlock.type === 'footer' ? 'footerText' :
+        selectedBlock.type === 'button' ? 'buttonLabel' : 'text'
+      );
 
-    const defaultField = (
-      (selectedBlock.type === 'header' || selectedBlock.type === 'header_text') ? 'headerTitle' :
-      selectedBlock.type === 'footer' ? 'footerText' :
-      selectedBlock.type === 'button' ? 'buttonLabel' : 'text'
-    );
-
-    const fieldName = activeSelection?.fieldName || defaultField;
-    const fullText = String((selectedBlock as any)[fieldName] || '');
-
-    let start = activeSelection?.start ?? 0;
-    let end = activeSelection?.end ?? 0;
-
-    const hasSelection = activeSelection && start < end && start <= fullText.length && end <= fullText.length;
-
-    let updatedFullText = '';
-
-    if (hasSelection) {
-      updatedFullText = fullText.substring(0, start) + linkHtml + fullText.substring(end);
-    } else {
-      if (start > 0 && start === end) {
-        updatedFullText = fullText.substring(0, start) + ' ' + linkHtml + ' ' + fullText.substring(start);
-      } else {
-        updatedFullText = fullText ? (fullText + ' ' + linkHtml) : linkHtml;
-      }
+      const fieldName = activeSelection?.fieldName || defaultField;
+      const fullText = String((selectedBlock as any)[fieldName] || '');
+      updateSelectedBlock({ [fieldName]: fullText ? (fullText + ' ' + linkHtml) : linkHtml });
+      showToast(`Link "${displayText}" inserido com sucesso!`);
     }
 
-    updateSelectedBlock({ [fieldName]: updatedFullText });
-    showToast(`Link "${displayText}" inserido com sucesso!`);
     setLinkModalOpen(false);
     setLinkText('');
     setLinkUrl('');
   };
 
   const handleRemoveLinkFromBlock = () => {
-    if (!selectedBlock) return;
-    const defaultField = (
-      (selectedBlock.type === 'header' || selectedBlock.type === 'header_text') ? 'headerTitle' :
-      selectedBlock.type === 'footer' ? 'footerText' :
-      selectedBlock.type === 'button' ? 'buttonLabel' : 'text'
-    );
+    if (activeEditorRef.current) {
+      activeEditorRef.current.execCommand('unlink');
+      showToast('Link removido do texto.');
+    } else if (selectedBlock) {
+      const defaultField = (
+        (selectedBlock.type === 'header' || selectedBlock.type === 'header_text') ? 'headerTitle' :
+        selectedBlock.type === 'footer' ? 'footerText' :
+        selectedBlock.type === 'button' ? 'buttonLabel' : 'text'
+      );
 
-    const fieldName = activeSelection?.fieldName || defaultField;
-    const fullText = String((selectedBlock as any)[fieldName] || '');
-
-    let start = activeSelection?.start ?? 0;
-    let end = activeSelection?.end ?? 0;
-
-    const hasSelection = activeSelection && start < end && start <= fullText.length && end <= fullText.length;
-
-    if (hasSelection) {
-      const selectedText = fullText.substring(start, end);
-      const cleanText = selectedText.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, '$1');
-      const updatedFullText = fullText.substring(0, start) + cleanText + fullText.substring(end);
-      updateSelectedBlock({ [fieldName]: updatedFullText });
-      showToast('Link removido do trecho selecionado.');
-    } else {
+      const fieldName = activeSelection?.fieldName || defaultField;
+      const fullText = String((selectedBlock as any)[fieldName] || '');
       const cleanText = fullText.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, '$1');
       updateSelectedBlock({ [fieldName]: cleanText });
       showToast('Links removidos do texto.');
@@ -1039,134 +1017,60 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
   ) => {
     if (!selectedBlock) return;
 
-    const defaultField = (
-      (selectedBlock.type === 'header' || selectedBlock.type === 'header_text') ? 'headerTitle' :
-      selectedBlock.type === 'footer' ? 'footerText' :
-      selectedBlock.type === 'button' ? 'buttonLabel' : 'text'
-    );
-
-    const fieldName = activeSelection?.fieldName || defaultField;
-    const fullText = String((selectedBlock as any)[fieldName] || '');
-
-    let start = activeSelection?.start ?? 0;
-    let end = activeSelection?.end ?? 0;
-
-    const hasSelection = activeSelection && start < end && start <= fullText.length && end <= fullText.length;
-
-    if (hasSelection) {
-      const selectedText = fullText.substring(start, end);
-      let newSelectedText = selectedText;
-
+    if (activeEditorRef.current) {
       switch (formatType) {
-        case 'bold': {
-          if (/^<b>[\s\S]*<\/b>$/i.test(selectedText) || /^<strong>[\s\S]*<\/strong>$/i.test(selectedText)) {
-            newSelectedText = selectedText
-              .replace(/^<b(?: style="[^"]*")?>([\s\S]*)<\/b>$/i, '$1')
-              .replace(/^<strong>([\s\S]*)<\/strong>$/i, '$1');
-          } else {
-            newSelectedText = `<b>${selectedText}</b>`;
+        case 'bold':
+          activeEditorRef.current.execCommand('bold');
+          break;
+        case 'italic':
+          activeEditorRef.current.execCommand('italic');
+          break;
+        case 'underline':
+          activeEditorRef.current.execCommand('underline');
+          break;
+        case 'strikethrough':
+          activeEditorRef.current.execCommand('strikeThrough');
+          break;
+        case 'color':
+          if (formatValue) {
+            activeEditorRef.current.execCommand('foreColor', String(formatValue));
           }
           break;
-        }
-        case 'italic': {
-          if (/^<i>[\s\S]*<\/i>$/i.test(selectedText) || /^<em>[\s\S]*<\/em>$/i.test(selectedText)) {
-            newSelectedText = selectedText
-              .replace(/^<i(?: style="[^"]*")?>([\s\S]*)<\/i>$/i, '$1')
-              .replace(/^<em>([\s\S]*)<\/em>$/i, '$1');
-          } else {
-            newSelectedText = `<i>${selectedText}</i>`;
+        case 'clear':
+          activeEditorRef.current.execCommand('removeFormat');
+          break;
+        case 'variable':
+          if (formatValue) {
+            activeEditorRef.current.insertHtml(` ${formatValue} `);
           }
           break;
-        }
-        case 'underline': {
-          if (/^<u>[\s\S]*<\/u>$/i.test(selectedText)) {
-            newSelectedText = selectedText.replace(/^<u>([\s\S]*)<\/u>$/i, '$1');
-          } else {
-            newSelectedText = `<u>${selectedText}</u>`;
-          }
+        case 'link':
+          handleOpenLinkModal();
+          return;
+        case 'unlink':
+          activeEditorRef.current.execCommand('unlink');
           break;
-        }
-        case 'strikethrough': {
-          if (/^<s>[\s\S]*<\/s>$/i.test(selectedText) || /^<del>[\s\S]*<\/del>$/i.test(selectedText)) {
-            newSelectedText = selectedText
-              .replace(/^<s(?: style="[^"]*")?>([\s\S]*)<\/s>$/i, '$1')
-              .replace(/^<del>([\s\S]*)<\/del>$/i, '$1');
-          } else {
-            newSelectedText = `<s>${selectedText}</s>`;
-          }
-          break;
-        }
-        case 'color': {
-          const hex = formatValue || '#dc2626';
-          newSelectedText = `<span style="color: ${hex};">${selectedText}</span>`;
-          break;
-        }
-        case 'fontSize': {
-          const px = formatValue || 16;
-          newSelectedText = `<span style="font-size: ${px}px;">${selectedText}</span>`;
-          break;
-        }
-        case 'clear': {
-          newSelectedText = selectedText.replace(/<[^>]*>/g, '');
-          break;
-        }
-        case 'variable': {
-          newSelectedText = ` ${formatValue} `;
-          break;
-        }
-        case 'link': {
-          const url = String(formatValue || 'https://');
-          newSelectedText = `<a href="${url}" target="_blank" style="color: #4f46e5; text-decoration: underline;">${selectedText}</a>`;
-          break;
-        }
-        case 'unlink': {
-          newSelectedText = selectedText.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, '$1');
-          break;
-        }
       }
-
-      const updatedFullText = fullText.substring(0, start) + newSelectedText + fullText.substring(end);
-      updateSelectedBlock({ [fieldName]: updatedFullText });
-      
-      const cleanDisplay = selectedText.replace(/<[^>]*>/g, '');
-      showToast(`Formatação aplicada no trecho selecionado: "${cleanDisplay}"`);
-
-      const newEnd = start + newSelectedText.length;
-      setActiveSelection({
-        fieldName,
-        start,
-        end: newEnd,
-        selectedText: newSelectedText,
-      });
+      showToast('Formatação aplicada no editor de texto!');
     } else {
       if (formatType === 'bold') {
         updateSelectedBlock({ isBold: !selectedBlock.isBold });
-        showToast(selectedBlock.isBold ? 'Negrito removido do bloco.' : 'Negrito aplicado no bloco. (Dica: Selecione um trecho de texto para aplicar apenas nele!)');
       } else if (formatType === 'italic') {
         updateSelectedBlock({ isItalic: !selectedBlock.isItalic });
-        showToast(selectedBlock.isItalic ? 'Itálico removido do bloco.' : 'Itálico aplicado no bloco. (Dica: Selecione um trecho de texto para aplicar apenas nele!)');
       } else if (formatType === 'underline') {
         updateSelectedBlock({ isUnderline: !selectedBlock.isUnderline });
-        showToast(selectedBlock.isUnderline ? 'Sublinhado removido do bloco.' : 'Sublinhado aplicado no bloco.');
       } else if (formatType === 'strikethrough') {
         updateSelectedBlock({ isStrikethrough: !selectedBlock.isStrikethrough });
-        showToast(selectedBlock.isStrikethrough ? 'Tachado removido do bloco.' : 'Tachado aplicado no bloco.');
       } else if (formatType === 'color' && formatValue) {
-        if (fieldName === 'headerTitle' || fieldName === 'headerSubtitle') {
-          updateSelectedBlock({ headerTextColor: formatValue as string });
-        } else if (fieldName === 'buttonLabel') {
-          updateSelectedBlock({ buttonTextColor: formatValue as string });
-        } else if (fieldName === 'footerText') {
-          updateSelectedBlock({ footerTextColor: formatValue as string });
-        } else {
-          updateSelectedBlock({ textColor: formatValue as string });
-        }
-        showToast('Cor alterada para o bloco inteiro. (Dica: Selecione um trecho de texto para alterar a cor apenas dele!)');
-      } else if (formatType === 'fontSize' && formatValue) {
-        updateSelectedBlock({ fontSizePx: Number(formatValue) });
-      } else if (formatType === 'variable') {
-        updateSelectedBlock({ [fieldName]: fullText + ` ${formatValue} ` });
-        showToast(`Variável ${formatValue} inserida!`);
+        updateSelectedBlock({ textColor: String(formatValue) });
+      } else if (formatType === 'variable' && formatValue) {
+        const defaultField = (
+          (selectedBlock.type === 'header' || selectedBlock.type === 'header_text') ? 'headerTitle' :
+          selectedBlock.type === 'footer' ? 'footerText' :
+          selectedBlock.type === 'button' ? 'buttonLabel' : 'text'
+        );
+        const curr = String((selectedBlock as any)[defaultField] || '');
+        updateSelectedBlock({ [defaultField]: curr + ` ${formatValue} ` });
       }
     }
   };
@@ -2020,38 +1924,46 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                         {isMenuOpen && (
                           <>
                             <div className="fixed inset-0 z-30" onClick={() => setOpenCardMenuId(null)} />
-                            <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl z-40 py-1 text-xs space-y-0.5 font-medium animate-fadeIn">
+                            <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200/90 rounded-2xl shadow-2xl z-40 py-1.5 text-xs font-semibold space-y-0.5 animate-fadeIn">
+                              <button
+                                type="button"
+                                onClick={() => { setSelectedBlockId(block.id); setOpenCardMenuId(null); }}
+                                className="w-full text-left px-3.5 py-2 hover:bg-indigo-50 text-indigo-700 font-extrabold flex items-center gap-2 transition-colors cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">edit</span>
+                                <span>Editar Bloco</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { handleDuplicate(block); setOpenCardMenuId(null); }}
+                                className="w-full text-left px-3.5 py-2 hover:bg-slate-100 text-slate-700 flex items-center gap-2 transition-colors cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                                <span>Duplicar Bloco</span>
+                              </button>
                               <button
                                 type="button"
                                 disabled={idx === 0}
                                 onClick={() => { handleMoveUp(idx); setOpenCardMenuId(null); }}
-                                className="w-full text-left px-3 py-1.5 hover:bg-slate-100 disabled:opacity-30 text-slate-700 flex items-center gap-2"
+                                className="w-full text-left px-3.5 py-2 hover:bg-slate-100 disabled:opacity-30 text-slate-700 flex items-center gap-2 transition-colors cursor-pointer"
                               >
                                 <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
-                                <span>Mover p/ Cima</span>
+                                <span>Mover para Cima</span>
                               </button>
                               <button
                                 type="button"
                                 disabled={idx === blocks.length - 1}
                                 onClick={() => { handleMoveDown(idx); setOpenCardMenuId(null); }}
-                                className="w-full text-left px-3 py-1.5 hover:bg-slate-100 disabled:opacity-30 text-slate-700 flex items-center gap-2"
+                                className="w-full text-left px-3.5 py-2 hover:bg-slate-100 disabled:opacity-30 text-slate-700 flex items-center gap-2 transition-colors cursor-pointer"
                               >
                                 <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
-                                <span>Mover p/ Baixo</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => { handleDuplicate(block); setOpenCardMenuId(null); }}
-                                className="w-full text-left px-3 py-1.5 hover:bg-slate-100 text-slate-700 flex items-center gap-2"
-                              >
-                                <span className="material-symbols-outlined text-[16px]">content_copy</span>
-                                <span>Duplicar Bloco</span>
+                                <span>Mover para Baixo</span>
                               </button>
                               <div className="border-t border-slate-100 my-1" />
                               <button
                                 type="button"
                                 onClick={() => { handleDelete(block.id); setOpenCardMenuId(null); }}
-                                className="w-full text-left px-3 py-1.5 hover:bg-red-50 text-red-600 flex items-center gap-2"
+                                className="w-full text-left px-3.5 py-2 hover:bg-red-100 text-red-600 font-bold flex items-center gap-2 transition-colors cursor-pointer"
                               >
                                 <span className="material-symbols-outlined text-[16px]">delete</span>
                                 <span>Excluir Bloco</span>
@@ -2080,7 +1992,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => duplicateBlock(selectedBlock.id)}
+                  onClick={() => handleDuplicate(selectedBlock)}
                   className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-600 border border-slate-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
                   title="Duplicar este bloco"
                 >
@@ -2096,40 +2008,28 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Título Principal do Cabeçalho (Suporta quebra de linha com Enter)
+                      Título Principal do Cabeçalho
                     </label>
-                    <textarea
-                      rows={3}
+                    <RichTextEditor
+                      key={`${selectedBlock.id}-headerTitle`}
+                      ref={activeEditorRef}
                       value={selectedBlock.headerTitle || ''}
-                      onChange={(e) => {
-                        updateSelectedBlock({ headerTitle: e.target.value });
-                        handleTextSelectOrChange(e, 'headerTitle');
-                      }}
-                      onSelect={(e) => handleTextSelectOrChange(e, 'headerTitle')}
-                      onKeyUp={(e) => handleTextSelectOrChange(e, 'headerTitle')}
-                      onMouseUp={(e) => handleTextSelectOrChange(e, 'headerTitle')}
-                      onFocus={(e) => handleTextSelectOrChange(e, 'headerTitle')}
-                      placeholder="Ex: ESTÁCIO&#10;SUA MATRÍCULA&#10;COMEÇA AQUI!"
-                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white font-bold leading-snug"
+                      onChange={(newVal) => updateSelectedBlock({ headerTitle: newVal })}
+                      placeholder="Ex: ESTÁCIO - SUA MATRÍCULA COMEÇA AQUI!"
+                      minHeight="70px"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Subtítulo / Texto Complementar do Cabeçalho
                     </label>
-                    <textarea
-                      rows={3}
+                    <RichTextEditor
+                      key={`${selectedBlock.id}-headerSubtitle`}
+                      ref={activeEditorRef}
                       value={selectedBlock.headerSubtitle || ''}
-                      onChange={(e) => {
-                        updateSelectedBlock({ headerSubtitle: e.target.value });
-                        handleTextSelectOrChange(e, 'headerSubtitle');
-                      }}
-                      onSelect={(e) => handleTextSelectOrChange(e, 'headerSubtitle')}
-                      onKeyUp={(e) => handleTextSelectOrChange(e, 'headerSubtitle')}
-                      onMouseUp={(e) => handleTextSelectOrChange(e, 'headerSubtitle')}
-                      onFocus={(e) => handleTextSelectOrChange(e, 'headerSubtitle')}
+                      onChange={(newVal) => updateSelectedBlock({ headerSubtitle: newVal })}
                       placeholder="Ex: Condições especiais para estudar na Estácio R9 – Taquara"
-                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white leading-snug"
+                      minHeight="70px"
                     />
                   </div>
                 </div>
@@ -2198,37 +2098,40 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                   className="hidden"
                 />
 
-                {/* Dimension Specifications Banner */}
-                <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-4 rounded-xl shadow-sm border border-indigo-700/50 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[20px] text-amber-400">straighten</span>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-indigo-100">
-                      Medidas Recomendadas do Cabeçalho (Evita Quebra de Layout)
-                    </h3>
+                {/* Compact Collapsible Dimension Specifications Banner */}
+                <details className="group bg-slate-100/90 border border-slate-200/90 rounded-xl overflow-hidden transition-all shadow-2xs">
+                  <summary className="px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:text-indigo-600 flex items-center justify-between cursor-pointer select-none">
+                    <span className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[18px] text-indigo-600">info</span>
+                      <span>Dicas de Tamanho e Medidas Recomendadas ℹ️ (600 x 200px)</span>
+                    </span>
+                    <span className="material-symbols-outlined text-[18px] text-slate-400 group-open:rotate-180 transition-transform">
+                      expand_more
+                    </span>
+                  </summary>
+                  <div className="p-3.5 border-t border-slate-200/80 bg-white space-y-2.5 text-xs">
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-slate-50 p-2 rounded-lg border border-slate-200">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase block">Largura Ideal</span>
+                        <span className="text-xs font-black text-indigo-600">600 px</span>
+                        <span className="text-[9px] text-slate-400 block">(100% da caixa)</span>
+                      </div>
+                      <div className="bg-slate-50 p-2 rounded-lg border border-slate-200">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase block">Altura</span>
+                        <span className="text-xs font-black text-amber-600">150–250 px</span>
+                        <span className="text-[9px] text-slate-400 block">(Proporção ~3:1)</span>
+                      </div>
+                      <div className="bg-slate-50 p-2 rounded-lg border border-slate-200">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase block">Formato</span>
+                        <span className="text-xs font-black text-slate-700">PNG / JPG</span>
+                        <span className="text-[9px] text-slate-400 block">(Até 5MB)</span>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed bg-indigo-50/50 p-2 rounded-lg border border-indigo-100">
+                      💡 A largura de 600px cobre todo o topo da caixa de entrada perfeitamente no Gmail, Outlook, Apple Mail e celular sem ficar borrada ou cortada.
+                    </p>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    <div className="bg-white/10 backdrop-blur-sm p-2.5 rounded-lg border border-white/10 text-center">
-                      <span className="text-[10px] uppercase font-bold text-indigo-200 block">Largura Ideal</span>
-                      <span className="text-sm font-extrabold text-white">600 px</span>
-                      <span className="text-[10px] text-indigo-200 block">(100% da caixa do e-mail)</span>
-                    </div>
-                    <div className="bg-white/10 backdrop-blur-sm p-2.5 rounded-lg border border-white/10 text-center">
-                      <span className="text-[10px] uppercase font-bold text-indigo-200 block">Altura Recomendada</span>
-                      <span className="text-sm font-extrabold text-amber-300">150 px – 250 px</span>
-                      <span className="text-[10px] text-indigo-200 block">(Proporção ~3:1 a 4:1)</span>
-                    </div>
-                    <div className="bg-white/10 backdrop-blur-sm p-2.5 rounded-lg border border-white/10 text-center">
-                      <span className="text-[10px] uppercase font-bold text-indigo-200 block">Formato & Tamanho</span>
-                      <span className="text-sm font-extrabold text-white">PNG / JPG</span>
-                      <span className="text-[10px] text-indigo-200 block">(Até 5MB)</span>
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-indigo-100/90 leading-relaxed bg-black/20 p-2.5 rounded-lg border border-white/5">
-                    💡 <strong>Dica do Especialista:</strong> O cabeçalho é a primeira impressão da sua mensagem. Mantendo a imagem na proporção de <strong>600x200px</strong>, ela cobrirá todo o topo da caixa de entrada perfeitamente no <strong>Gmail, Outlook, Apple Mail e leitores de celular</strong>, sem ficar borrada, nem esticada ou cortada.
-                  </p>
-                </div>
+                </details>
 
                 <div className="bg-white border border-slate-200 p-4 rounded-xl space-y-3 shadow-2xs">
                   <div className="flex items-center justify-between flex-wrap gap-2">
@@ -2257,35 +2160,38 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                   </div>
 
                   {/* Upload & Normalization Action Area */}
-                  <div className="flex flex-col sm:flex-row items-center gap-3 bg-indigo-50/60 p-3.5 rounded-xl border border-indigo-100">
-                    <button
-                      type="button"
-                      disabled={isNormalizing}
-                      onClick={() => imageFileInputRef.current?.click()}
-                      className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer shrink-0"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">
-                        {isNormalizing ? 'sync' : 'upload_file'}
-                      </span>
-                      <span>{isNormalizing ? 'Processando e Hospedando...' : 'Fazer Upload do Cabeçalho'}</span>
-                    </button>
-
-                    {selectedBlock.imageUrl && (
+                  <div className="bg-indigo-50/60 p-3.5 rounded-xl border border-indigo-100 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2.5">
                       <button
                         type="button"
                         disabled={isNormalizing}
-                        onClick={handleNormalizeExistingImage}
-                        className="w-full sm:w-auto px-3.5 py-2.5 bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs rounded-lg border border-indigo-200 shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-                        title="Redimensiona e otimiza para 600px de largura"
+                        onClick={() => imageFileInputRef.current?.click()}
+                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                       >
-                        <span className="material-symbols-outlined text-[16px] text-indigo-600">tune</span>
-                        <span>Otimizar para 600px</span>
+                        <span className="material-symbols-outlined text-[18px]">
+                          {isNormalizing ? 'sync' : 'upload_file'}
+                        </span>
+                        <span>{isNormalizing ? 'Processando...' : 'Fazer Upload do Cabeçalho'}</span>
                       </button>
-                    )}
 
-                    <span className="text-xs text-indigo-900/80 font-medium text-center sm:text-left">
-                      Geramos automaticamente a URL pública HTTPS necessária para que o cabeçalho abra no Gmail/Outlook.
-                    </span>
+                      {selectedBlock.imageUrl && (
+                        <button
+                          type="button"
+                          disabled={isNormalizing}
+                          onClick={handleNormalizeExistingImage}
+                          className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs rounded-xl border border-indigo-200 shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                          title="Redimensiona e otimiza para 600px de largura"
+                        >
+                          <span className="material-symbols-outlined text-[16px] text-indigo-600">tune</span>
+                          <span>Otimizar para 600px</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-indigo-950/80 font-medium leading-relaxed flex items-center gap-1.5 pt-1 border-t border-indigo-100/80">
+                      <span className="material-symbols-outlined text-[16px] text-indigo-600 shrink-0">verified</span>
+                      <span>Geramos automaticamente a URL pública HTTPS necessária para exibição garantida no Gmail e Outlook.</span>
+                    </p>
                   </div>
 
                   {/* Base64 Warning */}
@@ -2415,18 +2321,13 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Texto do Título</label>
-                  <input
-                    type="text"
+                  <RichTextEditor
+                    key={`${selectedBlock.id}-title`}
+                    ref={activeEditorRef}
                     value={selectedBlock.text || ''}
-                    onChange={(e) => {
-                      updateSelectedBlock({ text: e.target.value });
-                      handleTextSelectOrChange(e, 'text');
-                    }}
-                    onSelect={(e) => handleTextSelectOrChange(e, 'text')}
-                    onKeyUp={(e) => handleTextSelectOrChange(e, 'text')}
-                    onMouseUp={(e) => handleTextSelectOrChange(e, 'text')}
-                    onFocus={(e) => handleTextSelectOrChange(e, 'text')}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white font-bold"
+                    onChange={(newVal) => updateSelectedBlock({ text: newVal })}
+                    placeholder="Digite o título..."
+                    minHeight="50px"
                   />
                 </div>
                 {renderFormattingToolbar()}
@@ -2438,18 +2339,13 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Texto do Subtítulo</label>
-                  <input
-                    type="text"
+                  <RichTextEditor
+                    key={`${selectedBlock.id}-subtitle`}
+                    ref={activeEditorRef}
                     value={selectedBlock.text || ''}
-                    onChange={(e) => {
-                      updateSelectedBlock({ text: e.target.value });
-                      handleTextSelectOrChange(e, 'text');
-                    }}
-                    onSelect={(e) => handleTextSelectOrChange(e, 'text')}
-                    onKeyUp={(e) => handleTextSelectOrChange(e, 'text')}
-                    onMouseUp={(e) => handleTextSelectOrChange(e, 'text')}
-                    onFocus={(e) => handleTextSelectOrChange(e, 'text')}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white"
+                    onChange={(newVal) => updateSelectedBlock({ text: newVal })}
+                    placeholder="Digite o subtítulo..."
+                    minHeight="50px"
                   />
                 </div>
                 {renderFormattingToolbar()}
@@ -2461,18 +2357,13 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Conteúdo do Parágrafo</label>
-                  <textarea
-                    rows={4}
+                  <RichTextEditor
+                    key={`${selectedBlock.id}-text`}
+                    ref={activeEditorRef}
                     value={selectedBlock.text || ''}
-                    onChange={(e) => {
-                      updateSelectedBlock({ text: e.target.value });
-                      handleTextSelectOrChange(e, 'text');
-                    }}
-                    onSelect={(e) => handleTextSelectOrChange(e, 'text')}
-                    onKeyUp={(e) => handleTextSelectOrChange(e, 'text')}
-                    onMouseUp={(e) => handleTextSelectOrChange(e, 'text')}
-                    onFocus={(e) => handleTextSelectOrChange(e, 'text')}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white font-sans leading-relaxed"
+                    onChange={(newVal) => updateSelectedBlock({ text: newVal })}
+                    placeholder="Digite o conteúdo do parágrafo..."
+                    minHeight="120px"
                   />
                 </div>
                 {renderFormattingToolbar()}
@@ -2568,35 +2459,38 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                   </div>
 
                   {/* Upload & Normalization Action Area */}
-                  <div className="flex flex-col sm:flex-row items-center gap-3 bg-indigo-50/60 p-3.5 rounded-xl border border-indigo-100">
-                    <button
-                      type="button"
-                      disabled={isNormalizing}
-                      onClick={() => imageFileInputRef.current?.click()}
-                      className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer shrink-0"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">
-                        {isNormalizing ? 'sync' : 'upload_file'}
-                      </span>
-                      <span>{isNormalizing ? 'Processando e Hospedando...' : 'Fazer Upload de Imagem do Computador'}</span>
-                    </button>
-
-                    {selectedBlock.imageUrl && (
+                  <div className="bg-indigo-50/60 p-3.5 rounded-xl border border-indigo-100 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2.5">
                       <button
                         type="button"
                         disabled={isNormalizing}
-                        onClick={handleNormalizeExistingImage}
-                        className="w-full sm:w-auto px-3.5 py-2.5 bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs rounded-lg border border-indigo-200 shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-                        title="Redimensiona e otimiza para ficar visível em qualquer celular e PC"
+                        onClick={() => imageFileInputRef.current?.click()}
+                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                       >
-                        <span className="material-symbols-outlined text-[16px] text-indigo-600">tune</span>
-                        <span>Ajustar Dimensões Celular/PC</span>
+                        <span className="material-symbols-outlined text-[18px]">
+                          {isNormalizing ? 'sync' : 'upload_file'}
+                        </span>
+                        <span>{isNormalizing ? 'Processando...' : 'Fazer Upload de Imagem'}</span>
                       </button>
-                    )}
 
-                    <span className="text-xs text-indigo-900/80 font-medium text-center sm:text-left">
-                      Suporta PNG, JPG, WEBP, GIF (Limite: 5MB). Geramos automaticamente um link HTTPS para exibição garantida no Gmail e Outlook!
-                    </span>
+                      {selectedBlock.imageUrl && (
+                        <button
+                          type="button"
+                          disabled={isNormalizing}
+                          onClick={handleNormalizeExistingImage}
+                          className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs rounded-xl border border-indigo-200 shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                          title="Redimensiona e otimiza para ficar visível em qualquer celular e PC"
+                        >
+                          <span className="material-symbols-outlined text-[16px] text-indigo-600">tune</span>
+                          <span>Ajustar Dimensões Celular/PC</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-indigo-950/80 font-medium leading-relaxed flex items-center gap-1.5 pt-1 border-t border-indigo-100/80">
+                      <span className="material-symbols-outlined text-[16px] text-indigo-600 shrink-0">verified</span>
+                      <span>Suporta PNG, JPG, WEBP, GIF (Até 5MB). Geramos link HTTPS automático para exibição garantida no Gmail e Outlook.</span>
+                    </p>
                   </div>
 
                   {/* Base64 Gmail Explanation Banner & Conversion Button */}
@@ -2841,18 +2735,13 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Texto do Rodapé</label>
-                  <textarea
-                    rows={3}
+                  <RichTextEditor
+                    key={`${selectedBlock.id}-footerText`}
+                    ref={activeEditorRef}
                     value={selectedBlock.footerText || ''}
-                    onChange={(e) => {
-                      updateSelectedBlock({ footerText: e.target.value });
-                      handleTextSelectOrChange(e, 'footerText');
-                    }}
-                    onSelect={(e) => handleTextSelectOrChange(e, 'footerText')}
-                    onKeyUp={(e) => handleTextSelectOrChange(e, 'footerText')}
-                    onMouseUp={(e) => handleTextSelectOrChange(e, 'footerText')}
-                    onFocus={(e) => handleTextSelectOrChange(e, 'footerText')}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg bg-white font-sans leading-relaxed"
+                    onChange={(newVal) => updateSelectedBlock({ footerText: newVal })}
+                    placeholder="Digite o texto do rodapé..."
+                    minHeight="80px"
                   />
                 </div>
                 {renderFormattingToolbar({
@@ -2866,8 +2755,8 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
       </div>
 
       {/* COLUNA DIREITA: CANVAS DE VISUALIZAÇÃO EM TEMPO REAL (STICKY ON DESKTOP) */}
-          <div className="lg:col-span-5 xl:col-span-6 lg:sticky lg:top-24 lg:self-start space-y-4">
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
+          <div className="lg:col-span-5 xl:col-span-6 lg:sticky lg:top-20 lg:self-start z-10 space-y-4">
+            <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-200 pb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -2914,7 +2803,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
               </div>
 
               {/* Rendered Live Canvas Simulation Container */}
-              <div className="bg-slate-100/90 rounded-2xl p-3 sm:p-4 flex justify-center items-center min-h-[520px]">
+              <div className="bg-slate-100/90 rounded-2xl p-3 sm:p-4 flex justify-center items-center">
                 <div
                   className={`transition-all duration-300 bg-white rounded-xl shadow-md overflow-hidden ${
                     previewDevice === 'mobile' ? 'w-[340px]' : 'w-full max-w-[580px]'
@@ -2923,7 +2812,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                   <iframe
                     title="Gerador PRO Live Preview Canvas"
                     srcDoc={compiledHtml}
-                    className="w-full h-[580px] border-0"
+                    className="w-full h-[520px] lg:h-[calc(100vh-230px)] max-h-[620px] border-0"
                   />
                 </div>
               </div>

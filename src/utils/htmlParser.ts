@@ -286,16 +286,152 @@ function getTextWithLineBreaks(node: Element): string {
 }
 
 /**
+ * Helper to check if a single tag (or group of tags) wraps 100% of the visible text in a node.
+ */
+function isTagWrappingEntireContent(node: Element, tagNames: string[]): boolean {
+  const fullText = (node.textContent || '').trim();
+  if (!fullText) return false;
+
+  const selector = tagNames.join(', ');
+  const matchingChildren = Array.from(node.querySelectorAll(selector));
+
+  for (const child of matchingChildren) {
+    if ((child.textContent || '').trim() === fullText) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Extracts clean inline HTML from an element while preserving safe formatting tags:
+ * <b>, <strong>, <i>, <em>, <u>, <s>, <strike>, <del>, <a href="...">, <span style="color: ...">, <font color="...">, <sub>, <sup>, <mark>, <br>.
+ */
+function extractCleanInlineHtml(
+  node: Element,
+  options?: { unwrapEntireBold?: boolean; unwrapEntireItalic?: boolean; unwrapEntireUnderline?: boolean }
+): string {
+  const clone = node.cloneNode(true) as Element;
+
+  // Convert <br> tags to \n before cleaning
+  clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+
+  // If top-level bold/italic/underline is already handled at the block container level, unwrap top-level wrapper tags
+  if (options?.unwrapEntireBold) {
+    const fullText = (clone.textContent || '').trim();
+    Array.from(clone.querySelectorAll('b, strong')).forEach((el) => {
+      if ((el.textContent || '').trim() === fullText) unwrapElement(el);
+    });
+  }
+
+  if (options?.unwrapEntireItalic) {
+    const fullText = (clone.textContent || '').trim();
+    Array.from(clone.querySelectorAll('i, em')).forEach((el) => {
+      if ((el.textContent || '').trim() === fullText) unwrapElement(el);
+    });
+  }
+
+  if (options?.unwrapEntireUnderline) {
+    const fullText = (clone.textContent || '').trim();
+    Array.from(clone.querySelectorAll('u')).forEach((el) => {
+      if ((el.textContent || '').trim() === fullText) unwrapElement(el);
+    });
+  }
+
+  // Clean element hierarchy
+  cleanElementChildren(clone);
+
+  let rawHtml = clone.innerHTML.trim();
+
+  // If rawHtml contains inline HTML tags, replace newlines with <br/> for rich editor compatibility
+  if (/<[a-z][\s\S]*>/i.test(rawHtml)) {
+    rawHtml = rawHtml.replace(/\r?\n/g, '<br/>');
+  }
+
+  return rawHtml;
+}
+
+function cleanElementChildren(parent: Element) {
+  const children = Array.from(parent.childNodes);
+
+  for (const child of children) {
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      const el = child as Element;
+      const tagName = el.tagName.toLowerCase();
+
+      // Recurse first
+      cleanElementChildren(el);
+
+      if (tagName === 'a') {
+        const href = el.getAttribute('href') || '#';
+        el.setAttribute('href', href);
+        el.setAttribute('target', '_blank');
+        // Clean non-essential attributes
+        Array.from(el.attributes).forEach((attr) => {
+          if (!['href', 'target', 'style', 'title', 'class'].includes(attr.name.toLowerCase())) {
+            el.removeAttribute(attr.name);
+          }
+        });
+      } else if (tagName === 'span') {
+        const style = el.getAttribute('style') || '';
+        const color = parseColorFromStyle(style);
+        const bg = parseColorFromStyle(style);
+        const isBoldSpan = style.includes('font-weight: bold') || style.includes('font-weight: 700') || style.includes('font-weight:600');
+        const isItalicSpan = style.includes('font-style: italic') || style.includes('font-style:italic');
+
+        const styleParts: string[] = [];
+        if (color) styleParts.push(`color: ${color}`);
+        if (bg) styleParts.push(`background-color: ${bg}`);
+
+        if (styleParts.length > 0) {
+          el.setAttribute('style', styleParts.join('; ') + ';');
+        } else if (isBoldSpan) {
+          const b = document.createElement('b');
+          b.innerHTML = el.innerHTML;
+          el.replaceWith(b);
+        } else if (isItalicSpan) {
+          const i = document.createElement('i');
+          i.innerHTML = el.innerHTML;
+          el.replaceWith(i);
+        } else {
+          unwrapElement(el);
+        }
+      } else if (tagName === 'font') {
+        const color = el.getAttribute('color') || parseColorFromStyle(el.getAttribute('style') || '');
+        if (color) {
+          const span = document.createElement('span');
+          span.setAttribute('style', `color: ${color};`);
+          span.innerHTML = el.innerHTML;
+          el.replaceWith(span);
+        } else {
+          unwrapElement(el);
+        }
+      } else if (['b', 'strong', 'i', 'em', 'u', 's', 'strike', 'del', 'sub', 'sup', 'mark'].includes(tagName)) {
+        // Safe inline formatting tag: strip extraneous attributes
+        Array.from(el.attributes).forEach((attr) => el.removeAttribute(attr.name));
+      } else {
+        // Unrecognized structural container (p, div, table, etc. nested inside text block)
+        unwrapElement(el);
+      }
+    }
+  }
+}
+
+function unwrapElement(el: Element) {
+  const parent = el.parentNode;
+  if (!parent) return;
+  while (el.firstChild) {
+    parent.insertBefore(el.firstChild, el);
+  }
+  parent.removeChild(el);
+}
+
+/**
  * Extracts text from an element while preserving <a>, <b>, <span>, <font>, and formatting tags if present.
  */
 function getTextWithFormattedHtml(node: Element): string {
-  const hasFormattingChildren = node.querySelector('a, b, strong, i, em, u, s, strike, span, font, sub, sup, mark, br');
-  if (hasFormattingChildren) {
-    const clone = node.cloneNode(true) as Element;
-    clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
-    return clone.innerHTML.trim();
-  }
-  return getTextWithLineBreaks(node);
+  return extractCleanInlineHtml(node);
 }
 
 /**
@@ -762,8 +898,16 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
     const textColor = parseColor(styles['color']) || getInnerTextColor(node) || getInheritedTextColor(node, rootContainer) || '#334155';
     const bgColor = parseColor(styles['background-color'] || styles['background']) || getInheritedBgColor(node, rootContainer);
     const alignment = (styles['text-align'] as any) || getInheritedTextAlign(node, rootContainer) || 'left';
-    const isBold = styles['font-weight'] === 'bold' || parseInt(styles['font-weight'] || '400', 10) >= 600 || tagName === 'b' || tagName === 'strong' || node.querySelector('b, strong') !== null;
-    const isItalic = styles['font-style'] === 'italic' || tagName === 'i' || tagName === 'em' || node.querySelector('i, em') !== null;
+
+    // Strict bold/italic checks: Only set block-level isBold/isItalic if the container itself has bold/italic style OR if 100% of text is wrapped by bold/italic tag
+    const isContainerBold = styles['font-weight'] === 'bold' || parseInt(styles['font-weight'] || '400', 10) >= 600 || tagName === 'b' || tagName === 'strong' || tagName === 'h1' || tagName === 'h2';
+    const isEntirelyBold = isTagWrappingEntireContent(node, ['b', 'strong']);
+    const isBold = isContainerBold || isEntirelyBold;
+
+    const isContainerItalic = styles['font-style'] === 'italic' || tagName === 'i' || tagName === 'em';
+    const isEntirelyItalic = isTagWrappingEntireContent(node, ['i', 'em']);
+    const isItalic = isContainerItalic || isEntirelyItalic;
+
     const fontFamily = styles['font-family'] ? cleanFontFamily(styles['font-family']) : (getInheritedFontFamily(node, rootContainer) || defaultDocFontFamily);
     const lineHeight = styles['line-height'];
 
@@ -803,8 +947,8 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
       const h1 = node.querySelector('h1, h2, .title, .heading') || node;
       const subtitleEl = node.querySelector('p, h3, h4, .subtitle');
 
-      const titleText = getTextWithLineBreaks(h1) || 'CABEÇALHO IMPORTADO';
-      const subtitleText = subtitleEl ? getTextWithLineBreaks(subtitleEl) : undefined;
+      const titleText = extractCleanInlineHtml(h1, { unwrapEntireBold: true }) || 'CABEÇALHO IMPORTADO';
+      const subtitleText = subtitleEl ? extractCleanInlineHtml(subtitleEl) : undefined;
 
       const headerStyles = parseStylesAndAttrs(h1);
       const headerBg = bgColor || parseColor(styles['background-color']) || '#003bb3';
@@ -829,7 +973,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
 
     // 2. FOOTER
     if (isFooterElement(node, styles)) {
-      const footerText = getTextWithLineBreaks(node);
+      const footerText = extractCleanInlineHtml(node);
       blocks.push({
         id: createId(),
         type: 'footer',
@@ -977,7 +1121,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
 
     // 8. TITLE
     if (isTitleElement(node, styles)) {
-      const text = getTextWithLineBreaks(node);
+      const text = extractCleanInlineHtml(node, { unwrapEntireBold: isEntirelyBold, unwrapEntireItalic: isEntirelyItalic });
       if (text) {
         blocks.push({
           id: createId(),
@@ -998,7 +1142,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
 
     // 9. SUBTITLE
     if (isSubtitleElement(node, styles)) {
-      const text = getTextWithLineBreaks(node);
+      const text = extractCleanInlineHtml(node, { unwrapEntireBold: isEntirelyBold, unwrapEntireItalic: isEntirelyItalic });
       if (text) {
         blocks.push({
           id: createId(),
@@ -1022,7 +1166,16 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
       const listItems = Array.from(node.querySelectorAll('li'));
       if (listItems.length > 0) {
         listItems.forEach((li) => {
-          const liText = getTextWithFormattedHtml(li);
+          const liStyles = parseStylesAndAttrs(li);
+          const liIsContainerBold = liStyles['font-weight'] === 'bold' || parseInt(liStyles['font-weight'] || '400', 10) >= 600;
+          const liIsEntirelyBold = isTagWrappingEntireContent(li, ['b', 'strong']);
+          const liIsBold = liIsContainerBold || liIsEntirelyBold;
+
+          const liIsContainerItalic = liStyles['font-style'] === 'italic';
+          const liIsEntirelyItalic = isTagWrappingEntireContent(li, ['i', 'em']);
+          const liIsItalic = liIsContainerItalic || liIsEntirelyItalic;
+
+          const liText = extractCleanInlineHtml(li, { unwrapEntireBold: liIsEntirelyBold, unwrapEntireItalic: liIsEntirelyItalic });
           if (liText) {
             blocks.push({
               id: createId(),
@@ -1032,8 +1185,8 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
               textColor: textColor || '#334155',
               bgColor,
               alignment,
-              isBold,
-              isItalic,
+              isBold: liIsBold,
+              isItalic: liIsItalic,
               fontFamily,
               lineHeight,
             });
@@ -1046,7 +1199,7 @@ export function parseHtmlToBlocks(html: string): EmailBlock[] {
 
     // 11. PARAGRAPHS & LEAF TEXT CONTAINERS
     if (tagName === 'p' || tagName === 'li' || !hasBlockChildren(node, styles)) {
-      const text = getTextWithFormattedHtml(node);
+      const text = extractCleanInlineHtml(node, { unwrapEntireBold: isEntirelyBold, unwrapEntireItalic: isEntirelyItalic });
       if (text && text.length > 0) {
         // Decide block type based on font size or styling
         if (fontSizePx >= 22) {
