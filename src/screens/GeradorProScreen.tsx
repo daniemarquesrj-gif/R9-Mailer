@@ -173,6 +173,28 @@ const DEFAULT_BLOCKS: EmailBlock[] = [
   },
 ];
 
+// Helper to get default font size for a block type
+export const getDefaultBlockFontSize = (type: BlockType): number => {
+  switch (type) {
+    case 'header':
+    case 'header_text':
+    case 'title':
+      return 28;
+    case 'subtitle':
+      return 18;
+    case 'text':
+      return 15;
+    case 'button':
+      return 16;
+    case 'coupon':
+      return 22;
+    case 'footer':
+      return 12;
+    default:
+      return 16;
+  }
+};
+
 // Helper to construct inline CSS string for text blocks
 function buildTextStyle(block: EmailBlock, defaultSize: number, defaultColor: string, defaultAlign = 'left'): string {
   const sizeMap: Record<string, number> = { sm: 18, md: 22, lg: 26, xl: 30 };
@@ -207,9 +229,10 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         const rawSubtitle = block.headerSubtitle;
         const formattedSubtitle = rawSubtitle ? rawSubtitle.replace(/\n/g, '<br/>') : '';
 
+        const titleSize = block.fontSizePx || 28;
         const style = buildTextStyle(
           { ...block, textColor: block.headerTextColor || '#ffffff' },
-          block.fontSizePx || 28,
+          titleSize,
           '#ffffff',
           block.alignment || 'center'
         );
@@ -387,9 +410,9 @@ export function compileBlocksToHtml(blocks: EmailBlock[]): string {
         const formatted = rawTxt.replace(/\n/g, '<br/>');
         const style = buildTextStyle(
           { ...block, textColor: block.footerTextColor || '#64748b' },
-          12,
+          block.fontSizePx || 12,
           '#64748b',
-          'center'
+          block.alignment || 'center'
         );
 
         htmlContent += `
@@ -494,6 +517,7 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
   // Continuously sync compiled HTML from Gerador Visual blocks to global emailData.customCodeHtml
   useEffect(() => {
     const compiled = compileBlocksToHtml(blocks);
+    if (compiled === lastParsedHtmlRef.current) return;
     lastParsedHtmlRef.current = compiled;
     setEmailData((prev) => {
       if (prev.customCodeHtml === compiled) return prev;
@@ -874,8 +898,20 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
   };
 
   const updateSelectedBlock = (updatedProps: Partial<EmailBlock>) => {
-    setBlocks(prev =>
-      prev.map((b) => (b.id === selectedBlockId ? { ...b, ...updatedProps } : b))
+    const targetId = selectedBlock?.id || selectedBlockId;
+    setBlocks((prev) =>
+      prev.map((b) => {
+        if (b.id !== targetId) return b;
+        let isDifferent = false;
+        for (const key in updatedProps) {
+          if ((b as any)[key] !== (updatedProps as any)[key]) {
+            isDifferent = true;
+            break;
+          }
+        }
+        if (!isDifferent) return b;
+        return { ...b, ...updatedProps };
+      })
     );
   };
 
@@ -1103,7 +1139,8 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
 
     const currentTextColor = (selectedBlock as any)[defaultColorKey] || selectedBlock.textColor || '#334155';
     const currentBgColor = (selectedBlock as any)[defaultBgKey] || selectedBlock.bgColor || '#ffffff';
-    const currentFontSize = selectedBlock.fontSizePx || 16;
+    const defaultBlockSize = getDefaultBlockFontSize(selectedBlock.type);
+    const currentFontSize = selectedBlock.fontSizePx || defaultBlockSize;
     const currentAlign = selectedBlock.alignment || 'left';
 
     const COLOR_PRESETS = [
@@ -1328,6 +1365,25 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
               <span className="material-symbols-outlined text-[18px] text-slate-500">link</span>
               <span>Link</span>
             </button>
+
+            {/* Quick Font Size Selector in Main Toolbar */}
+            <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-xl border border-slate-200/90 shadow-2xs" title="Tamanho da fonte">
+              <span className="material-symbols-outlined text-[16px] text-slate-500">format_size</span>
+              <select
+                value={currentFontSize}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  if (!isNaN(val)) updateSelectedBlock({ fontSizePx: val });
+                }}
+                className="text-xs font-bold text-indigo-700 bg-indigo-50/70 border border-indigo-200/70 rounded-lg px-2 py-1 cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-indigo-500 font-mono"
+              >
+                {[10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28, 32, 36, 40, 48].map((sz) => (
+                  <option key={sz} value={sz}>
+                    {sz}px {sz === defaultBlockSize ? ' (Padrão)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Alignment Controls */}
@@ -1409,25 +1465,100 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
               </button>
             </div>
 
-            {/* 2-Column Grid of Advanced Settings */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Tamanho da Fonte (px) */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700">Tamanho da Fonte (px):</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min="10"
-                    max="48"
-                    value={currentFontSize}
-                    onChange={(e) => updateSelectedBlock({ fontSizePx: parseInt(e.target.value, 10) })}
-                    className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
-                  />
-                  <span className="text-xs font-extrabold text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-md shrink-0">
+            {/* Fixed Typography Size Selector Box */}
+            <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px] text-indigo-600">format_size</span>
+                  <span>Tamanho da Fonte Fixo / Tipografia do Bloco:</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-md font-mono">
                     {currentFontSize}px
                   </span>
+                  {selectedBlock.fontSizePx && selectedBlock.fontSizePx !== defaultBlockSize && (
+                    <button
+                      type="button"
+                      onClick={() => updateSelectedBlock({ fontSizePx: defaultBlockSize })}
+                      className="text-[10px] text-slate-500 hover:text-indigo-600 font-semibold underline cursor-pointer"
+                      title="Restaurar tamanho padrão"
+                    >
+                      Restaurar Padrão ({defaultBlockSize}px)
+                    </button>
+                  )}
                 </div>
               </div>
+
+              {/* Fixed Sizes Buttons Grid */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {[
+                  { sz: 10, label: '10px' },
+                  { sz: 12, label: '12px' },
+                  { sz: 14, label: '14px' },
+                  { sz: 15, label: '15px' },
+                  { sz: 16, label: '16px' },
+                  { sz: 18, label: '18px' },
+                  { sz: 20, label: '20px' },
+                  { sz: 22, label: '22px' },
+                  { sz: 24, label: '24px' },
+                  { sz: 28, label: '28px' },
+                  { sz: 32, label: '32px' },
+                  { sz: 36, label: '36px' },
+                  { sz: 40, label: '40px' },
+                  { sz: 48, label: '48px' },
+                ].map(({ sz, label }) => {
+                  const isActive = currentFontSize === sz;
+                  const isDefault = sz === defaultBlockSize;
+                  return (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => updateSelectedBlock({ fontSizePx: sz })}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
+                        isActive
+                          ? 'bg-indigo-600 text-white font-bold border-indigo-700 shadow-xs'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                      title={`${label}${isDefault ? ' (Padrão para este bloco)' : ''}`}
+                    >
+                      {label}
+                      {isDefault && <span className="text-[9px] opacity-75 ml-0.5">•</span>}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Semantic Scale Select Dropdown */}
+              <div className="pt-2 border-t border-slate-100 flex items-center gap-3">
+                <span className="text-[11px] text-slate-500 font-semibold shrink-0">Escala de Uso:</span>
+                <select
+                  value={currentFontSize}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    if (!isNaN(val)) updateSelectedBlock({ fontSizePx: val });
+                  }}
+                  className="w-full text-xs p-2 border border-slate-300 rounded-lg bg-slate-50 font-medium text-slate-800 focus:bg-white cursor-pointer"
+                >
+                  <option value={10}>10px - Microtexto / Avisos legais</option>
+                  <option value={12}>12px - Rodapé / Informações de contato</option>
+                  <option value={14}>14px - Texto Compacto / Secundário</option>
+                  <option value={15}>15px - Padrão Parágrafo (Corpo do E-mail)</option>
+                  <option value={16}>16px - Texto Médio / Botão CTA</option>
+                  <option value={18}>18px - Subtítulo / Destaque Suave</option>
+                  <option value={20}>20px - Subtítulo Médio</option>
+                  <option value={22}>22px - Destaque Comercial / Cupom</option>
+                  <option value={24}>24px - Subtítulo Forte / Título H3</option>
+                  <option value={28}>28px - Título de Seção / Banner Padrão</option>
+                  <option value={32}>32px - Título Principal / Grande Impacto</option>
+                  <option value={36}>36px - Banner Grande</option>
+                  <option value={40}>40px - Super Destaque</option>
+                  <option value={48}>48px - Banner Gigante</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 2-Column Grid of Advanced Settings */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
               {/* Família da Fonte */}
               {showFontFamily && (
@@ -2034,26 +2165,60 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 p-3.5 rounded-xl space-y-3">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                    Estilização do Subtítulo / Texto Complementar
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                        Tamanho do Subtítulo: <span className="text-indigo-600 font-extrabold">{selectedBlock.headerSubtitleSizePx || 16}px</span>
+                <div className="bg-white border border-slate-200 p-4 rounded-xl space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[18px] text-indigo-600">subtitles</span>
+                      <span>Estilização do Subtítulo / Texto Complementar</span>
+                    </span>
+                    <span className="text-[11px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-md font-mono">
+                      {selectedBlock.headerSubtitleSizePx || 16}px
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-slate-600">
+                        Tamanho Fixo do Subtítulo:
                       </label>
-                      <input
-                        type="range"
-                        min="12"
-                        max="36"
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {[12, 14, 15, 16, 18, 20, 22, 24, 28].map((sz) => (
+                          <button
+                            key={sz}
+                            type="button"
+                            onClick={() => updateSelectedBlock({ headerSubtitleSizePx: sz })}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
+                              (selectedBlock.headerSubtitleSizePx || 16) === sz
+                                ? 'bg-indigo-600 text-white font-bold border-indigo-700 shadow-xs'
+                                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {sz}px
+                          </button>
+                        ))}
+                      </div>
+                      <select
                         value={selectedBlock.headerSubtitleSizePx || 16}
-                        onChange={(e) => updateSelectedBlock({ headerSubtitleSizePx: parseInt(e.target.value, 10) })}
-                        className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-100 rounded-lg"
-                      />
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          if (!isNaN(val)) updateSelectedBlock({ headerSubtitleSizePx: val });
+                        }}
+                        className="w-full text-xs p-1.5 border border-slate-300 rounded-lg bg-slate-50 font-medium text-slate-800 focus:bg-white cursor-pointer mt-1"
+                      >
+                        <option value={12}>12px - Discreto / Rodapé de Banner</option>
+                        <option value={14}>14px - Compacto</option>
+                        <option value={15}>15px - Padrão Leitura</option>
+                        <option value={16}>16px - Padrão Médio</option>
+                        <option value={18}>18px - Subtítulo Destacado</option>
+                        <option value={20}>20px - Subtítulo Forte</option>
+                        <option value={22}>22px - Destaque Principal</option>
+                        <option value={24}>24px - Grande Impacto</option>
+                        <option value={28}>28px - Máximo Destaque</option>
+                      </select>
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Cor do Subtítulo</label>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-600">Cor do Subtítulo:</label>
                       <div className="flex items-center gap-2">
                         <input
                           type="color"
@@ -2061,14 +2226,14 @@ export const GeradorProScreen: React.FC<GeradorProScreenProps> = ({
                           onChange={(e) => updateSelectedBlock({ headerSubtitleColor: e.target.value })}
                           className="w-9 h-8 p-0.5 border border-slate-300 rounded cursor-pointer bg-white"
                         />
-                        <span className="text-xs font-mono uppercase text-slate-600">{selectedBlock.headerSubtitleColor || '#ffffff'}</span>
-                        <div className="flex gap-1 ml-2">
-                          {['#ffffff', '#e0e7ff', '#fef08a', '#93c5fd', '#1e1b4b'].map((hex) => (
+                        <span className="text-xs font-mono uppercase text-slate-600 font-bold">{selectedBlock.headerSubtitleColor || '#ffffff'}</span>
+                        <div className="flex gap-1 ml-1 flex-wrap">
+                          {['#ffffff', '#e0e7ff', '#fef08a', '#93c5fd', '#1e1b4b', '#f97316'].map((hex) => (
                             <button
                               key={hex}
                               type="button"
                               onClick={() => updateSelectedBlock({ headerSubtitleColor: hex })}
-                              className="w-5 h-5 rounded-full border border-slate-300 hover:scale-110 transition-transform"
+                              className="w-5 h-5 rounded-full border border-slate-300 hover:scale-110 transition-transform shadow-2xs"
                               style={{ backgroundColor: hex }}
                               title={`Cor: ${hex}`}
                             />
